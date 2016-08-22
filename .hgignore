@@ -1,0 +1,12 @@
+syntax: glob
+.DS_Store
+*.swp
+*.orig
+.idea
+Gemfile.lock
+coverage
+pkg
+*.gem
+doc
+.bundle
+.yardoc
