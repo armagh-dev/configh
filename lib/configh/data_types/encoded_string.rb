@@ -44,6 +44,11 @@ module Configh
       def encoded
         to_s
       end
+      
+      def ==(other)
+        @encoded_string == other.to_s
+      end
+      
     end
   end
 end

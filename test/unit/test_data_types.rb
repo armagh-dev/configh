@@ -212,4 +212,12 @@ class TestDataTypes < Test::Unit::TestCase
     Configh::DataTypes.define_singleton_method( :ensure_is_fred ){ |x| }
     assert_true Configh::DataTypes.supported?( 'fred' )
   end
+  
+  def test_encoded_string_equal
+    e1 = Configh::DataTypes::EncodedString.from_plain_text 'same'
+    e2 = Configh::DataTypes::EncodedString.from_plain_text 'same'
+    e3 = Configh::DataTypes::EncodedString.from_plain_text 'different'
+    assert_equal e1, e2
+    assert_not_equal e1, e3
+  end
 end
