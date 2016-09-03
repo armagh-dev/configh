@@ -27,6 +27,7 @@ module Configh
   class ConfigUnchangedWarning < StandardError; end
     
   class BaseConfiguration
+    attr_reader :__name, :__type, :__timestamp
   
     def self.initialize_from_static_values( values_hash )
       bc = new( nil )
@@ -74,11 +75,11 @@ module Configh
 
     def initialize( config_name )
       @__timestamp = nil
-      @__type      = self.class.const_get( 'CONFIGURED_CLASS' ).name[/[^:]*?$/]
+      @__type      = self.class.const_get( 'CONFIGURED_CLASS' ).name
       @__values    = {}
-      @__config_name = config_name
+      @__name      = config_name
       @__static    = true
-    end            
+    end        
   
     def change_value( pgroup, pname, value )
       candidate_values_hash = Marshal.load( Marshal.dump( @__values ))  #deep copy
@@ -166,14 +167,14 @@ module Configh
         refresh
         
       rescue ConfigValidationError => e
-        raise ConfigInitError, "#{@__type} configuration in database is invalid: #{e.message.join("\n")}."
+        raise ConfigInitError, "#{@__type} #{@__name }configuration in database is invalid: #{e.message.join("\n")}."
       
       rescue ConfigNotFoundError => e
         begin
           reset_values_to( {} )
           save
         rescue ConfigValidationError => e
-          raise ConfigInitError, "No #{@__type} configuration found named #{@__config_name} and unable to create from defaults: #{ e.message }"
+          raise ConfigInitError, "No #{@__type} configuration found named #{@__name} and unable to create from defaults: #{ e.message }"
         end     
       end    
     end

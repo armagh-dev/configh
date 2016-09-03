@@ -81,13 +81,17 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
     @defined_modules_and_classes = []
     
     d = Date.today
-    @simple_class = new_configurable_class 'Simple'
+    
+    @base_class = new_configurable_class 'Base'
+    @base_class.configured_by Configh::MongoBasedConfiguration
+    
+    @simple_class = new_configurable_class 'Simple', @base_class
     @simple_class.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
     @simple_class.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
     @simple_class.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d
     @simple_class.configured_by Configh::MongoBasedConfiguration
 
-    @complete_class = new_configurable_class 'Complete'
+    @complete_class = new_configurable_class 'Complete', @base_class
     @complete_class.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true, default: 'def string'
     @complete_class.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4, writable:true 
     @complete_class.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d
@@ -112,8 +116,6 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
   end
   
   def test_get_good
-  
-    t = Time.now
        
     config = nil
     assert_nothing_raised { config = @complete_class.use_named_config( @@collection, 'fred' )  }
@@ -124,7 +126,6 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
   end
   
   def test_get_nothing_found_cant_build
-    t = Time.now
        
     config = nil
     e = assert_raises Configh::ConfigInitError do
@@ -134,14 +135,7 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
   end
 
   def test_get_nothing_found_can_build
-    t = Time.now
-    
-    new_config = { 
-      'type' => 'Complete',
-      'name' => 'alice',
-      'values' => { 'complete' => { 'p1' => 'def string', 'p2' => 4, 'p3' => Date.today }}
-    }
-    
+
     config = nil  
     assert_nothing_raised { config = @complete_class.use_named_config( @@collection, 'alice' ) }
     assert_equal 4, config.complete.p2
@@ -151,6 +145,22 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
     
     config = @complete_class.use_static_config_values( {'complete' => { 'p1' => 'hi' }})
     assert_equal 'hi', config.complete.p1
+  end
+  
+  def test_initialize_named_with_values
+    
+    config = nil
+    assert_nothing_raised do
+      config = @simple_class.use_named_config( @@collection, 'martha', using_values: { 'simple' => { 'p1' => 'woot!' }})
+    end
+    assert_equal 'woot!', config.simple.p1
+    assert_equal 4, config.simple.p2
+    
+    config2 = nil
+    assert_nothing_raised do
+      config2 = @simple_class.use_named_config( @@collection, 'martha' )
+    end
+    assert_equal 'woot!', config2.simple.p1
   end
   
   def test_writable
@@ -171,7 +181,7 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
     
     config_history = nil
     assert_nothing_raised { 
-      config = @complete_class.use_named_config( @@collection, 'alice', true )
+      config = @complete_class.use_named_config( @@collection, 'alice', maintain_history: true )
       3.times do |i|
         sleep 2
         config.complete.p2 = i
@@ -184,6 +194,66 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
     assert_equal history_of_ts.sort, history_of_ts
     
   end
+  
+  def test_named_configs
+    
+    test_names = [ 'alice', 'bob', 'charlie' ]
+    assert_nothing_raised do
+      test_names.each do |name|
+        config = @complete_class.use_named_config( @@collection, name )
+        config.complete.p2 = name.length
+      end
+    end
+    
+    names = []
+    assert_nothing_raised do
+      @complete_class.named_configs( @@collection ).each do |action_class, config|
+        assert_equal @complete_class, action_class
+        names << config.__name
+        assert_equal config.__name.length, config.complete.p2
+      end
+    end
+    assert_equal test_names, names.sort
+  
+    configs = {}
+    assert_nothing_raised do
+      @simple_class.use_named_config( @@collection, 'dummy', using_values: { 'simple' => { 'p1' => 'duh' }})
+      @base_class.named_configs( @@collection ).each do |action_class, config|
+        configs[ action_class.name ] ||= []
+        configs[ action_class.name ] << config
+      end
+      assert_equal test_names, configs[ 'Complete' ].collect{ |c| c.__name }.sort
+      assert_equal 'dummy', configs[ 'Simple' ].first.__name
+      
+      @base_class.named_configs( @@collection, include_descendants: false ).each do |a,b|
+        fail "found unexpected base class config"
+      end
+    end
+  end
+  
+  def test_unrecognized_type
+    config = nil
+    assert_nothing_raised do
+      config = @simple_class.use_named_config( @@collection, 'martha', using_values: { 'simple' => { 'p1' => 'woot!' }})
+    end
+    assert_equal 'woot!', config.simple.p1
+    assert_equal 4, config.simple.p2
+    
+    Object.module_eval{ remove_const 'Simple' }
+    e = assert_raises( Configh::UnrecognizedTypeError ) {
+      @base_class.named_configs( @@collection ).each { |c| }
+    }
+    puts e.message
+  end
+  
+  def test_no_collection
+    
+   e = assert_raises( Configh::UndefinedCollectionError) {
+     config = @simple_class.use_named_config( nil, 'martha' )
+   }
+   puts e
+ end
+  
 end
   
   

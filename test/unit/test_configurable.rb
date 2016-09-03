@@ -174,4 +174,63 @@ class TestConfigurable < Test::Unit::TestCase
       assert_equal 1, config.child.px   
     }
   end
+  
+  def test_redef_params_within_class
+    
+    klass = nil
+    
+    d = Date.today
+    assert_nothing_raised {
+      klass = new_configurable_class 'Bogus'
+      Bogus.define_singleton_method( 'bogus') {|values| }
+      klass = new_configurable_class 'Simple'
+      klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true, default: 'hi'
+      klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
+      klass.define_parameter name: 'p2', description: 'this is the real p2', type: 'string', required: true, default: 'yay'
+      klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d, group: 'explicit'
+      klass.define_parameter name: 'p3', description: 'this is another p3', type: 'integer', required: true, default: 7
+      klass.define_parameter name: 'p4', description: 'poof', type: 'integer', required: true, default: 10, group: 'other'
+      klass.define_parameter name: 'p4', description: 'here', type: 'string', required: true, default: 'yo', group: 'other'
+   
+      assert_equal 5, klass.defined_parameters.length
+      
+      config = klass.use_static_config_values( {} )
+      assert_equal 'hi', config.simple.p1
+      assert_equal 'yay', config.simple.p2
+      assert_equal d, config.explicit.p3
+      assert_equal 7, config.simple.p3
+      assert_equal 'yo', config.other.p4
+    }
+  end
+  
+  def test_redef_params_across_classes
+    
+      klass = nil
+    
+      d = Date.today
+      assert_nothing_raised {
+        klass = new_configurable_class 'Bogus'
+        Bogus.define_singleton_method( 'bogus') {|values| }
+        simple_class = new_configurable_class 'Simple'
+        other_class = new_configurable_class 'Other', Simple
+        
+        simple_class.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true, default: 'hi'
+        simple_class.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4, group: 'dim'
+        other_class.define_parameter name: 'p2', description: 'this is the real p2', type: 'string', required: true, default: 'yay', group: 'dim'
+        simple_class.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d, group: 'explicit'
+        simple_class.define_parameter name: 'p3', description: 'this is another p3', type: 'integer', required: true, default: 7
+        simple_class.define_parameter name: 'p4', description: 'poof', type: 'integer', required: true, default: 10, group: 'bling'
+        other_class.define_parameter name: 'p4', description: 'here', type: 'string', required: true, default: 'yo', group: 'bling'
+   
+        assert_equal 5, other_class.defined_parameters.length
+      
+        config = other_class.use_static_config_values( {} )
+        assert_equal 'hi', config.simple.p1
+        assert_equal 'yay', config.dim.p2
+        assert_equal d, config.explicit.p3
+        assert_equal 7, config.simple.p3
+        assert_equal 'yo', config.bling.p4
+      }
+    end
+  
 end

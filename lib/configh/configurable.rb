@@ -25,11 +25,26 @@ module Configh
     module ClassMethods
     
       def defined_configurables
-        constants
+        
+        configs = constants
           .find_all{ |c| c[/CONFIGURED_MODULE_KEY_.*/] }
           .collect{ |c| const_get(c) if const_get(c) }
-          .compact
-          .flatten
+          
+        klass_configs, module_configs = configs.partition{ |h| h[ :klass ].is_a? Class }
+        klass_configs.sort!{ |a,b| ( a == b ) ? 0 : ( (a<b) ? -1 : 1 ) }
+        module_configs.each do |mc|
+          i = klass_configs.index{ |kc| kc[ :klass ].included_modules.include?( mc[ :klass ] )} || 0
+          klass_configs.insert( i, mc )
+        end
+        
+        params = {}
+        klass_configs.collect{ |h| h[:params]}.each do |h|
+          h.each do |group, pig|
+            params[ group ] ||= {}
+            params[ group ].merge! pig 
+          end
+        end
+        params.collect{ |group,pig| pig.values }.flatten
       end
     
       def defined_parameters
@@ -56,6 +71,10 @@ module Configh
         self::ConfigurationFactory.initialize_from_named_config( *args )
       end
       
+      def named_configs( *args )
+        self::ConfigurationFactory.named_configs( *args )
+      end
+      
       def validate( values_hash )
         self::ConfigurationFactory.validate( values_hash )
       end
@@ -65,7 +84,7 @@ module Configh
     def self.included(base)
   
       configurable_key = "CONFIGURED_MODULE_KEY_#{ SecureRandom.hex(5) }"
-      base.const_set configurable_key, Array.new
+      base.const_set configurable_key, { :klass => base, :params => {}}
 
       base.define_singleton_method( 'configured_by' ) { |config_class|
         # build the name of the custom configuration factory class for debugging purposes
@@ -78,11 +97,17 @@ module Configh
       }
     
       base.define_singleton_method( 'define_parameter' ) { |args|
-        base.const_get( configurable_key ) << Parameter.new( group: base.name[ /[^\:]*?$/ ].downcase, **args )
+        params_hash = base.const_get( configurable_key )[ :params ]
+        group = args[ :group ] || base.name[ /[^\:]*?$/ ].downcase
+        params_hash[ group ] ||= {}
+        params_hash[ group ][ args[:name] ] = Parameter.new( group: group, **args )
       }
     
       base.define_singleton_method( 'define_group_validation_callback' ) { |args|
-        base.const_get( configurable_key ) << GroupValidationCallback.new( group: base.name.downcase, **args )
+        params_hash = base.const_get( configurable_key )[ :params ]
+        group = args[ :group ] || base.name.downcase
+        params_hash[ group ] ||= {}
+        params_hash[ group ][ args[:name]] = GroupValidationCallback.new( group: group, **args )
       }
       
       if base.is_a?( Class ) and base.superclass&.const_defined? 'ConfigurationFactory'
