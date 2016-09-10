@@ -23,7 +23,7 @@ require 'fileutils'
 desc 'Run tests'
 
 task :ci => [:clean, :yard, :test]
-task :ci_vm => [:ci, :integration, :cucumber]
+task :ci_vm => [:ci, :integration]
 task :default => [:ci_vm]
 
 Rake::TestTask.new(:test) do |t|

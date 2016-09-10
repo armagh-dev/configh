@@ -24,15 +24,14 @@ module Configh
   class Parameter 
     attr_accessor :name, :description, :type, :required, :default, :prompt, :group, :writable, :warning, :error, :value
   
-    def initialize( name:, description:, type:, required: false, default: nil, prompt: nil, group: nil, writable: false )
+    def initialize( name:, description:, type:, required: false, default: nil, prompt: nil, group: nil )
       
       [ [ 'name',        'populated_string' ],
         [ 'description', 'populated_string' ],
         [ 'type',        'populated_string' ],
         [ 'required',    'boolean' ],
         [ 'prompt',      'string', true ],
-        [ 'group',       'string', true ],
-        [ 'writable',    'boolean' ]
+        [ 'group',       'string', true ]
       ].each do |pp_name, pp_type, pp_nullable|
         begin
           instance_variable_set "@#{ pp_name }", DataTypes.ensure_value_is_datatype( eval(pp_name), pp_type, pp_nullable )
@@ -71,7 +70,7 @@ module Configh
     def to_hash
       Hash[ 
         [ 'name', 'description', 'type', 'required', 'default', 'prompt', 
-          'group', 'writable', 'warning', 'error', 'value'
+          'group', 'warning', 'error', 'value'
         ].collect{ |pname| [ pname, send( pname.to_sym ) ] }
       ]
     end

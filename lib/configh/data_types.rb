@@ -23,9 +23,9 @@ require_relative 'data_types/encoded_string'
 module Configh
   module DataTypes
     
-    class TypeError < TypeError; end
+    class TypeError < ::TypeError; end
 
-    SUPPORTED_TYPES = %w{ integer non_negative_integer positive_integer string populated_string date timestamp boolean encoded_string symbol hash }
+    SUPPORTED_TYPES = %w{ integer non_negative_integer positive_integer string populated_string date timestamp boolean encoded_string symbol hash string_array symbol_array }
     
     def self.supported?( datatype_name )
       SUPPORTED_TYPES.include?( datatype_name ) || self.respond_to?( "ensure_is_#{datatype_name}".to_sym )
@@ -141,6 +141,23 @@ module Configh
       return value if value.is_a?( Hash )
       raise TypeError, "value #{value} cannot be cast as a hash"
     end
-    
+
+    def self.ensure_is_string_array(value)
+      begin
+        return value.collect{|i| ensure_is_string(i)} if value.is_a? Array
+      rescue
+        raise TypeError, "value #{value} is not an array of elements that could be converted to strings"
+      end
+      raise TypeError, "value #{value} is not an array of strings"
+    end
+
+    def self.ensure_is_symbol_array(value)
+      begin
+        return value.collect{|i| ensure_is_symbol(i)} if value.is_a? Array
+      rescue
+        raise TypeError, "value #{value} is not an array of elements that could be converted to symbols"
+      end
+      raise TypeError, "value #{value} is not an array of symbols"
+    end
   end
 end

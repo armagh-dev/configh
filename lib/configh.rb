@@ -15,6 +15,11 @@
 # limitations under the License.
 #
 
-Dir.glob( "#{ __dir__ }/configh/**/*.rb" ).each do |rb_file|
-  require_relative rb_file
-end
+require_relative './configh/version'
+require_relative './configh/data_types'
+require_relative './configh/parameter'
+require_relative './configh/configurable'
+require_relative './configh/group_validation_callback'
+require_relative './configh/configuration'
+require_relative './configh/array_based_configuration'
+require_relative './configh/mongo_based_configuration'

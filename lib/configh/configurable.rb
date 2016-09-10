@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-require_relative "./base_configuration"
+require_relative "./configuration"
 
 module Configh
   require 'securerandom'
@@ -27,7 +27,7 @@ module Configh
       def defined_configurables
         
         configs = constants
-          .find_all{ |c| c[/CONFIGURED_MODULE_KEY_.*/] }
+          .find_all{ |c| c[/CONFIGH_PARAMS_.*/] }
           .collect{ |c| const_get(c) if const_get(c) }
           
         klass_configs, module_configs = configs.partition{ |h| h[ :klass ].is_a? Class }
@@ -44,7 +44,8 @@ module Configh
             params[ group ].merge! pig 
           end
         end
-        params.collect{ |group,pig| pig.values }.flatten
+        params = params.collect{ |group,pig| pig.values }.flatten
+        Marshal.load( Marshal.dump( params ))
       end
     
       def defined_parameters
@@ -63,39 +64,33 @@ module Configh
         defined_configurables.find_all{ |vc| vc.is_a? GroupValidationCallback }
       end
     
-      def use_static_config_values( candidate_static_values_hash)
-        self::ConfigurationFactory.initialize_from_static_values( candidate_static_values_hash )
-      end
-    
-      def use_named_config( *args )
-        self::ConfigurationFactory.initialize_from_named_config( *args )
+      def find_or_create_configuration( store, name, values_for_create: nil, maintain_history: false )
+        Configh::Configuration.find_or_create( self, store, name, values_for_create: values_for_create, maintain_history: maintain_history )
       end
       
-      def named_configs( *args )
-        self::ConfigurationFactory.named_configs( *args )
+      def find_configuration( store, name )
+        Configh::Configuration.find( self, store, name )
+      end
+      
+      def create_configuration( store, name, values, maintain_history: false )
+        Configh::Configuration.create( self, store, name, values, maintain_history: maintain_history )
+      end
+      
+      def find_all_configurations( store, include_descendants: false )
+        Configh::Configuration.find_all( self, store, include_descendants: include_descendants )
       end
       
       def validate( values_hash )
-        self::ConfigurationFactory.validate( values_hash )
+        Configh::Configuration.validate( self, values_hash )
       end
     
     end
   
     def self.included(base)
   
-      configurable_key = "CONFIGURED_MODULE_KEY_#{ SecureRandom.hex(5) }"
+      configurable_key = "CONFIGH_PARAMS_#{ SecureRandom.hex(5) }"
       base.const_set configurable_key, { :klass => base, :params => {}}
 
-      base.define_singleton_method( 'configured_by' ) { |config_class|
-        # build the name of the custom configuration factory class for debugging purposes
-        config_factory_class_name = "#{config_class.name[ /[^\:]*?$/ ]}FactoryFor#{ base.name.gsub(/::/,'')}"
-  
-        base.const_set config_factory_class_name, Class.new( config_class )
-        base.send( :remove_const, 'ConfigurationFactory' ) if base.const_defined?( 'ConfigurationFactory', false )
-        base.const_set 'ConfigurationFactory', base.const_get( config_factory_class_name )
-        base::ConfigurationFactory.const_set 'CONFIGURED_CLASS', base
-      }
-    
       base.define_singleton_method( 'define_parameter' ) { |args|
         params_hash = base.const_get( configurable_key )[ :params ]
         group = args[ :group ] || base.name[ /[^\:]*?$/ ].downcase
@@ -109,24 +104,10 @@ module Configh
         params_hash[ group ] ||= {}
         params_hash[ group ][ args[:name]] = GroupValidationCallback.new( group: group, **args )
       }
-      
-      if base.is_a?( Class ) and base.superclass&.const_defined? 'ConfigurationFactory'
-        base.configured_by base.superclass.const_get( 'ConfigurationFactory').superclass
-      else
-        base.configured_by BaseConfiguration
-      end
-      
+            
       base.extend ClassMethods
     
     end
-  
-    def use_static_config_values( candidate_static_values_hash )
-      self.class::use_static_config_values( candidate_static_values_hash )
-    end
     
-    def use_named_config( args )
-      self.class::use_named_config( args )
-    end
-  
   end
 end

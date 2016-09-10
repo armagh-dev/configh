@@ -19,6 +19,10 @@
 require 'test/unit'
 require_relative '../../lib/configh/data_types'
 
+class WeirdType
+  undef_method :to_s
+end
+
 class TestDataTypes < Test::Unit::TestCase
   
   def test_ensure_is_integer
@@ -186,6 +190,31 @@ class TestDataTypes < Test::Unit::TestCase
     end
     assert_equal "value  cannot be cast as a symbol", e.message
   end
+
+  def test_ensure_is_string_array
+    assert_equal %w(a b c d e), Configh::DataTypes.ensure_is_string_array(%w(a b c d e))
+    assert_equal %w(1 2 3), Configh::DataTypes.ensure_is_string_array([1,2,3])
+    assert_raise(Configh::DataTypes::TypeError.new('value {} is not an array of strings')){
+      Configh::DataTypes.ensure_is_string_array({})
+    }
+
+    e = assert_raise(Configh::DataTypes::TypeError){
+      Configh::DataTypes.ensure_is_string_array([WeirdType.new])
+    }
+    assert_include(e.message, 'is not an array of elements that could be converted to strings')
+  end
+
+  def test_ensure_is_symbol_array
+    assert_equal [:a, :b, :c, :d, :e], Configh::DataTypes.ensure_is_symbol_array(%w(a b c d e))
+    assert_raise(Configh::DataTypes::TypeError.new('value {} is not an array of symbols')){
+      Configh::DataTypes.ensure_is_symbol_array({})
+    }
+
+    e = assert_raise(Configh::DataTypes::TypeError){
+      Configh::DataTypes.ensure_is_symbol_array([WeirdType.new])
+    }
+    assert_include(e.message, 'is not an array of elements that could be converted to symbols')
+  end
   
   def test_ensure_value_is_datatype
     t = Time.now
@@ -201,6 +230,8 @@ class TestDataTypes < Test::Unit::TestCase
     assert_equal Date.today, Configh::DataTypes.ensure_value_is_datatype( Date.today.strftime( "%Y-%m-%d"), 'date')
     assert_equal es, Configh::DataTypes.ensure_value_is_datatype( es, 'encoded_string')
     assert_equal nil, Configh::DataTypes.ensure_value_is_datatype( nil, 'integer', true )
+    assert_equal ['one', 'two'], Configh::DataTypes.ensure_value_is_datatype(%w(one two), 'string_array' )
+    assert_equal [:one, :two], Configh::DataTypes.ensure_value_is_datatype(%w(one two), 'symbol_array' )
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_value_is_datatype( nil, 'integer' )
     end

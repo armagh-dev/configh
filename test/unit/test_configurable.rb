@@ -27,6 +27,7 @@ class TestConfigurable < Test::Unit::TestCase
   
   def setup
     
+    @config_store = []
     @defined_modules_and_classes = []
   end
   
@@ -80,7 +81,7 @@ class TestConfigurable < Test::Unit::TestCase
     
     assert_equal Bogus, klass.defined_group_validation_callbacks.first.callback_class
     
-    config = klass.use_static_config_values( { 'simple' => { 'p1' => 'hello!', 'p2' => '5' }})
+    config = klass.create_configuration( @config_store, 'simple1', { 'simple' => { 'p1' => 'hello!', 'p2' => '5' }})
     assert_equal 'hello!', config.simple.p1
     assert_equal 5, config.simple.p2
     assert_equal d, config.simple.p3
@@ -103,7 +104,7 @@ class TestConfigurable < Test::Unit::TestCase
       
       }
       mod.define_group_validation_callback callback_class: Green, callback_method: :good_green
-      mod_config = mod.use_static_config_values( { 'green' => { 'hue' => 'neon', 'rgb' => '140.140.140' }})
+      mod_config = mod.create_configuration( @config_store, 'modules1', { 'green' => { 'hue' => 'neon', 'rgb' => '140.140.140' }})
       
       mod = new_configurable_module 'Passthrough'
       mod.include Green
@@ -117,7 +118,7 @@ class TestConfigurable < Test::Unit::TestCase
       klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d
       klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus
       
-      config = klass.use_static_config_values( { 'simple' => { 'p1' => 'hello!', 'p2' => '5' }, 'green' => { 'hue' => 'olive'}})
+      config = klass.create_configuration( @config_store, 'complex', { 'simple' => { 'p1' => 'hello!', 'p2' => '5' }, 'green' => { 'hue' => 'olive'}})
       assert_equal 'hello!', config.simple.p1
       assert_equal 5, config.simple.p2
       assert_equal d, config.simple.p3
@@ -141,7 +142,7 @@ class TestConfigurable < Test::Unit::TestCase
       child_klass = new_configurable_class 'Child', Simple
       child_klass.define_parameter name: 'px', description: 'this is px', type: 'integer', required: false, default: 1
       
-      config = child_klass.use_static_config_values( { 'simple' => { 'p1' => 'hello!', 'p2' => '5' } })
+      config = child_klass.create_configuration( @config_store, 'inherit1', { 'simple' => { 'p1' => 'hello!', 'p2' => '5' } })
       assert_equal 'hello!', config.simple.p1
       assert_equal 5, config.simple.p2
       assert_equal d, config.special.p3
@@ -161,13 +162,11 @@ class TestConfigurable < Test::Unit::TestCase
       klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
       klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d, group: 'special'
       klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus
-      klass.configured_by Configh::MongoBasedConfiguration
    
       child_klass = new_configurable_class 'Child', Simple
       child_klass.define_parameter name: 'px', description: 'this is px', type: 'integer', required: false, default: 1
     
-      assert child_klass.const_get('ConfigurationFactory') < Configh::MongoBasedConfiguration
-      config = child_klass.use_static_config_values( { 'simple' => { 'p1' => 'hello!', 'p2' => '5' } })
+      config = child_klass.create_configuration( @config_store, 'inherit2', { 'simple' => { 'p1' => 'hello!', 'p2' => '5' } })
       assert_equal 'hello!', config.simple.p1
       assert_equal 5, config.simple.p2
       assert_equal d, config.special.p3
@@ -194,7 +193,7 @@ class TestConfigurable < Test::Unit::TestCase
    
       assert_equal 5, klass.defined_parameters.length
       
-      config = klass.use_static_config_values( {} )
+      config = klass.create_configuration( @config_store, 'class1', {} )
       assert_equal 'hi', config.simple.p1
       assert_equal 'yay', config.simple.p2
       assert_equal d, config.explicit.p3
@@ -224,7 +223,7 @@ class TestConfigurable < Test::Unit::TestCase
    
         assert_equal 5, other_class.defined_parameters.length
       
-        config = other_class.use_static_config_values( {} )
+        config = other_class.create_configuration( @config_store, 'class2', {} )
         assert_equal 'hi', config.simple.p1
         assert_equal 'yay', config.dim.p2
         assert_equal d, config.explicit.p3
