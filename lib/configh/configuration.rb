@@ -102,8 +102,10 @@ module Configh
         
     def refresh
       
-      stored_config = get
-      raise ConfigNotFoundError unless stored_config
+      serialized_config = get
+      raise ConfigNotFoundError unless serialized_config
+      
+      stored_config = Configuration.unserialize( serialized_config )
       return false if @__timestamp and stored_config[ 'timestamp' ] == @__timestamp
       raise ConfigRefreshError, "#{@__type} #{@__name} configuration in database is older than that previously loaded." if @__timestamp and stored_config['timestamp'] < @__timestamp
       
@@ -165,14 +167,53 @@ module Configh
       [ flagged_configurables, validated_values_hash, errors, warnings ]
     end  
 
-    def to_hash
+    def serialize
+      
+      serialized_values = {}
+      @__values.each do |grp, params|
+        serialized_values[ grp ] ||= {}
+        params.each do |k,v|
+          serialized_values[ grp ][ k ] = v.to_s
+        end
+      end
+      
       {
-        'type'             => @__type,
+        'type'             => @__type.to_s,
         'name'             => @__name,
-        'timestamp'        => @__timestamp,
-        'maintain_history' => @__maintain_history,
-        'values'           => @__values
+        'timestamp'        => @__timestamp.to_s,
+        'maintain_history' => @__maintain_history.to_s,
+        'values'           => serialized_values
       }
+      
+    end
+    
+    def Configuration.unserialize( serialized_config )
+      
+      begin
+        type = eval( serialized_config[ 'type' ])
+      rescue
+        raise ConfigInitError, "Unrecognized type #{ serialized_values[ 'type' ]}"
+      end
+      
+      serialized_values = serialized_config[ 'values' ]
+      unserialized_values = {}
+      serialized_values.each do |grp, params|
+        unserialized_values[ grp ] ||= {}
+        params.each do |k,v|
+          target_datatype = type.defined_parameters.find{ |p| p.group == grp and p.name == k }.type
+          unserialized_values[ grp ][k] = DataTypes.ensure_value_is_datatype( v, target_datatype )
+        end
+      end
+      
+      unserialized_config = {
+        'type'             => type,
+        'name'             => serialized_config[ 'name' ],
+        'timestamp'        => Time.parse( serialized_config[ 'timestamp']),
+        'maintain_history' => eval(serialized_config[ 'maintain_history' ]),
+        'values'           => serialized_values       
+      }
+      
+      unserialized_config
     end
     
     def dup_param_with_value( p )

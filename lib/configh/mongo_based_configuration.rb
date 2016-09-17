@@ -28,18 +28,32 @@ module Configh
 
       typenames_to_find = types_to_find.collect{ |t| t.name }
       names_and_types = collection.find( { 'type' => { '$in' => typenames_to_find }}, { 'name':1, 'type': 1}).to_a
-      names_and_types.collect!{ |h| [ eval(h['type']), h['name']]}
-      names_and_types
+      names_and_types.collect!{ |h| 
+        begin
+         nat = [ h['type'], h['name']]
+       rescue
+         raise ConfigInitError, "Unrecognized type #{h['type']}"
+       end
+       nat
+      }.uniq
+      names_and_types.collect{ |t,n| [ eval(t), n ]}
     end
 
     def self.get_all_types( collection )
-      collection.distinct( 'type' ).collect{ |k| eval(k) }
+      collection.distinct( 'type' ).collect{ |k| 
+        begin
+          t = eval(k) 
+        rescue
+          raise ConfigInitError, "Unrecognized type #{h['type']}"
+        end
+        t
+        }
     end
          
     def get
       begin
         type_name = @__type.name
-        config_in_db = @__store.aggregate( [
+        serialized_config_in_db = @__store.aggregate( [
            { '$match' => { 'type' => type_name, 'name' => @__name } },
            { '$sort'  => { 'timestamp' => -1 }},
            { '$limit' => 1 }
@@ -48,27 +62,25 @@ module Configh
         raise e.class, "Problem pulling #{ @__type } configuration '#{@__name}' from database: #{ e.message }"
       end
       
-      config_in_db[ 'type' ] = eval( config_in_db[ 'type' ]) if config_in_db
-      config_in_db
+      serialized_config_in_db
     end
     
     def save
       
-      trying_config = to_hash
-      trying_config[ 'timestamp' ] = Time.now.round
-      type_name = @__type.name
-      trying_config[ 'type' ] = type_name
-            
+      trying_config = serialize
+      trying_timestamp = Time.now.utc.round
+      trying_config[ 'timestamp' ] = trying_timestamp.to_s
+      
       begin
         if @__maintain_history
           @__store.insert_one trying_config
         else
-          @__store.find_one_and_replace( { 'type' => type_name, 'name' => @__name }, trying_config, :upsert => true)
+          @__store.find_one_and_replace( { 'type' => trying_config['type'], 'name' => @__name }, trying_config, :upsert => true)
         end
       rescue => e   
         raise e.class, "Problem saving #{ @__type.name } configuration '#{ @__name}' to database: #{ e.message }"
       end
-      @__timestamp = trying_config[ 'timestamp' ]
+      @__timestamp = trying_timestamp
 
     end
   
@@ -82,7 +94,7 @@ module Configh
       rescue => e
         raise e.class, "Problem pulling #{ @__type } configuration history '#{@__name}' from database: #{ e.message }"
       end
-      configs.collect{ |c| [ c['timestamp'], c['values'] ]}
+      configs.collect{ |c| uc = Configuration.unserialize( c ),[ uc['timestamp'], uc['values'] ]}
     end  
     
     def detailed_history

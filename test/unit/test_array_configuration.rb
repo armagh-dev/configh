@@ -176,6 +176,16 @@ class TestArrayConfiguration < Test::Unit::TestCase
     }
     assert_false config.refresh
   end
+  
+  def test_serialize
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    assert_nothing_raised {
+      config = Simple.create_configuration( @config_store, 'refreshing', { 'simple' => { 'p1' => 'hello', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    }
+  end
+  
+  def
      
   def test_find
     setup_configured_class_with_configured_modules_and_base_classes

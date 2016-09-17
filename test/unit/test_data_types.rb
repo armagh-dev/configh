@@ -172,10 +172,9 @@ class TestDataTypes < Test::Unit::TestCase
   def test_ensure_is_encoded_string
     es = Configh::DataTypes::EncodedString.from_plain_text( "Hi there" )
     assert_equal es, Configh::DataTypes.ensure_is_encoded_string( es )   
-    e = assert_raise Configh::DataTypes::TypeError do
-      Configh::DataTypes.ensure_is_encoded_string( "Hi I'm a string." )
-    end
-    assert_equal "value Hi I'm a string. is not an encoded string", e.message
+    
+    uns = Configh::DataTypes.ensure_is_encoded_string( es.to_s )
+    assert_equal 'Hi there', uns.plain_text
   end
   
   def test_ensure_is_symbol

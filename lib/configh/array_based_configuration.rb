@@ -25,20 +25,31 @@ module Configh
     
     def self.get_config_names_of_types( array, types_to_find )
      array
-        .collect{ |config| [ config[ 'type' ].name, config[ 'name' ] ] if types_to_find.include? config[ 'type' ]}
-        .compact
+        .collect{ |config| 
+          type = eval(config['type'])
+          [ config[ 'type' ], config[ 'name' ] ] if types_to_find.include? type 
+        }.compact
         .sort
         .uniq
         .collect{ |t,n| [ eval(t), n ]}
     end
 
     def self.get_all_types( array )
-      array.collect{ |config| config[ 'type' ] }.uniq
+      all_types = []
+      begin
+        all_types = array
+          .collect{ |config| config[ 'type' ]}
+          .uniq
+          .collect{ |tname| eval(tname) }
+      rescue
+        raise ConfigInitError, "Unrecognized type #{ config[ 'type' ]}"
+      end
+      all_types
     end
          
     def get
      config = @__store
-        .select{ |cfg| cfg[ 'type'] == @__type and cfg[ 'name' ] == @__name }
+        .select{ |cfg| cfg[ 'type'] == @__type.to_s and cfg[ 'name' ] == @__name }
         .sort{ |a,b| b[ 'timestamp' ] <=> a[ 'timestamp' ]}
         .first
       
@@ -46,21 +57,23 @@ module Configh
     end
     
     def save
-      
-      trying_config = to_hash
-      trying_config[ 'timestamp' ] = Time.now.round
+    
+      trying_timestamp = Time.now.utc.round
+        
+      trying_config = serialize
+      trying_config[ 'timestamp' ] = trying_timestamp.to_s
       
       unless @__maintain_history
-        @__store.delete_if{ |cfg| cfg[ 'type' ] == @__type and cfg[ 'name' ] == @__name }
+        @__store.delete_if{ |cfg| cfg[ 'type' ] == @__type.to_s and cfg[ 'name' ] == @__name }
       end
       @__store << trying_config
-      @__timestamp = trying_config[ 'timestamp' ]
+      @__timestamp = trying_timestamp
     end
   
     def history
       
       configs = @__store
-        .select{ |cfg| cfg[ 'type' ] == @__type and cfg[ 'name' ] == @__name }
+        .select{ |cfg| cfg[ 'type' ] == @__type.to_s and cfg[ 'name' ] == @__name }
         .sort{ |a,b| a[ 'timestamp' ] <=> b[ 'timestamp'] }
       configs.collect{ |c| [ c['timestamp'], c['values'] ]}
     end  

@@ -118,11 +118,15 @@ module Configh
     end
   
     def self.ensure_is_boolean( value )
+      if value.is_a?( String ) and [ 'true', 'false' ].include?( value.downcase )
+        value = eval(value)
+      end
       raise TypeError, "value #{value} is not boolean" unless Boolean.bool?( value ) 
       value
     end
     
     def self.ensure_is_encoded_string( value )
+      value = EncodedString.from_encoded( value ) if value.is_a?( String )
       raise TypeError, "value #{value} is not an encoded string" unless value.is_a?( EncodedString )
       value
     end

@@ -104,7 +104,6 @@ class TestParameter < Test::Unit::TestCase
     
     @type = 'encoded_string'
     @default = Configh::DataTypes::EncodedString.from_plain_text( 'hi' ); assert_nothing_raised { define_from_ivars }
-    @default = 'hi'; assert_parameter_definition_raises_parameter_definition_error_with_bad_default_message 
   end
   
   def assert_successful_validation( type, default, required, value, expected_value )
@@ -173,7 +172,7 @@ class TestParameter < Test::Unit::TestCase
     assert_fails_validation( 'boolean', nil, false, 'x', 'type validation failed: value x is not boolean')
     
     assert_successful_validation( 'encoded_string', nil, true, es, es )
-    assert_fails_validation( 'encoded_string', nil, true, 'yo', 'type validation failed: value yo is not an encoded string')
+    assert_successful_validation( 'encoded_string', nil, true, es.to_s, es)
     
   end
   
