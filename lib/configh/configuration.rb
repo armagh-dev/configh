@@ -31,7 +31,7 @@ module Configh
   class UnsupportedStoreError < StandardError; end
     
   class Configuration
-    attr_reader :__name, :__type, :__timestamp
+    attr_reader :__name, :__type, :__timestamp, :__values
   
     CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES = {
       Array   => ArrayBasedConfiguration,
