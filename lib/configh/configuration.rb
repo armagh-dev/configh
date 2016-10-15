@@ -103,7 +103,7 @@ module Configh
     def refresh
       
       serialized_config = get
-      raise ConfigNotFoundError unless serialized_config
+      raise ConfigNotFoundError, "Type #{ @__type } #{ @__name } not found during refresh" unless serialized_config
       
       stored_config = Configuration.unserialize( serialized_config )
       return false if @__timestamp and stored_config[ 'timestamp' ] == @__timestamp
