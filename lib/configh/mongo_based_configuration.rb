@@ -68,8 +68,6 @@ module Configh
     def save
       
       trying_config = serialize
-      trying_timestamp = Time.now.utc.round
-      trying_config[ 'timestamp' ] = trying_timestamp.to_s
       
       begin
         if @__maintain_history
@@ -80,7 +78,7 @@ module Configh
       rescue => e   
         raise e.class, "Problem saving #{ @__type.name } configuration '#{ @__name}' to database: #{ e.message }"
       end
-      @__timestamp = trying_timestamp
+      @__timestamp = Time.parse(trying_config[ 'timestamp' ])
 
     end
   

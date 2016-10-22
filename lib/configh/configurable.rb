@@ -68,8 +68,8 @@ module Configh
         Configh::Configuration.find_or_create( self, store, name, values_for_create: values_for_create, maintain_history: maintain_history )
       end
       
-      def find_configuration( store, name )
-        Configh::Configuration.find( self, store, name )
+      def find_configuration( store, name, raw: false )
+        Configh::Configuration.find( self, store, name, raw: raw )
       end
       
       def create_configuration( store, name, values, maintain_history: false )
@@ -78,6 +78,10 @@ module Configh
       
       def find_all_configurations( store, include_descendants: false )
         Configh::Configuration.find_all( self, store, include_descendants: include_descendants )
+      end
+      
+      def find_raw_configurations( store, include_descendants: false )
+        Configh::Configuration.find_raw( self, store, include_descendants: include_descendants )
       end
       
       def validate( values_hash )

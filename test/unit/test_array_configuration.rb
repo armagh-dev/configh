@@ -251,6 +251,21 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_equal [ 'config4', 'config5' ], Child.find_all_configurations( @config_store ).collect{ |klass, config| config.__name }.sort
     assert_equal [ 'config1', 'config2', 'config3', 'config4', 'config5' ], Simple.find_all_configurations( @config_store, :include_descendants => true ).collect{ |klass, config| config.__name }.sort
   end
+
+  def test_find_all_raw
+    setup_configured_class_with_configured_modules_and_base_classes
+    assert_nothing_raised {
+      Simple.create_configuration( @config_store, 'config1', { 'simple' => { 'p1' => 'hello1', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'config2', { 'simple' => { 'p1' => 'hello2', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'config3', { 'simple' => { 'p1' => 'hello3', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Child.create_configuration( @config_store, 'config4', { 'simple' => { 'p1' => 'hello4', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Child.create_configuration( @config_store, 'config5', { 'simple' => { 'p1' => 'hello5', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    }
+    assert_equal [ 'config1', 'config2', 'config3' ], Simple.find_raw_configurations( @config_store ).collect{ |_k,h| h['name'] }.sort
+    assert_equal [ 'config4', 'config5' ], Child.find_raw_configurations( @config_store ).collect{ |_k,h| h['name'] }.sort
+    assert_equal [ 'config1', 'config2', 'config3', 'config4', 'config5' ], Simple.find_raw_configurations( @config_store, :include_descendants => true ).collect{ |_k, h| h['name'] }.sort
+  end
+
 end
 
   

@@ -44,18 +44,24 @@ module Configh
                create( for_class, store, name, values_for_create, maintain_history: false )
     end
     
-    def self.find( for_class, store, name ) 
+    def self.find( for_class, store, name, raw: false ) 
       
       config_class = CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES[ store.class ]
       raise( UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless config_class
 
       new_config = config_class.new( for_class, store, name )
+      result = nil
       begin
-        new_config.refresh
+        if raw
+          result = new_config.get
+        else
+          new_config.refresh
+          result = new_config
+        end
       rescue ConfigNotFoundError => e
         return nil
       end
-      new_config
+      result
     end
     
     def self.create( for_class, store, name, values, maintain_history: false )
@@ -91,6 +97,24 @@ module Configh
       end
     end
         
+    def self.find_raw( for_class, store, include_descendants: false )
+      
+      configuration_class = CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES[ store.class ]
+      raise( UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless configuration_class
+
+      types_to_find = [ for_class ]
+      if include_descendants
+        stored_classes = configuration_class.get_all_types( store )
+        types_to_find.concat stored_classes.select{ |klass| klass < for_class }
+      end
+      
+      Enumerator.new do |yielder|
+        configuration_class.get_config_names_of_types( store, types_to_find ).each do | configured_class, config_name |
+          yielder << [ configured_class, configured_class.find_configuration( store, config_name, raw: true ) ]
+        end
+      end
+    end
+
     def initialize( for_class, store, name, maintain_history: false  )
       @__type      = for_class
       @__store     = store
@@ -173,14 +197,18 @@ module Configh
       @__values.each do |grp, params|
         serialized_values[ grp ] ||= {}
         params.each do |k,v|
-          serialized_values[ grp ][ k ] = v.to_s
+          unless v.nil?
+            serialized_values[ grp ][ k ] = v.to_s
+          end
         end
       end
+      
+      @__timestamp ||= Time.now.utc
       
       {
         'type'             => @__type.to_s,
         'name'             => @__name,
-        'timestamp'        => @__timestamp.to_s,
+        'timestamp'        => @__timestamp.xmlschema(6),
         'maintain_history' => @__maintain_history.to_s,
         'values'           => serialized_values
       }

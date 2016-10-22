@@ -33,8 +33,11 @@ module Configh
     
     def self.ensure_value_is_datatype( value, datatype_name, nullable = nil )
     
-      return nil if value.nil? and nullable
-      raise TypeError, "value cannot be nil" if value.nil? and not nullable
+      if nullable
+        return nil if (value.nil? or ( value.is_a?(String) and value[/^\s*$/] and datatype_name != "populated_string"))
+      else
+        raise TypeError, "value cannot be nil" if value.nil?
+      end
       raise TypeError, "No such datatype #{ datatype_name }" unless supported?( datatype_name )
       
       dispatch = "ensure_is_#{datatype_name}"
