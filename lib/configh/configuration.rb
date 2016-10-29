@@ -17,6 +17,7 @@
 
 require_relative './parameter'
 require_relative './group_validation_callback'
+require_relative './group_test_callback'
 require_relative './array_based_configuration'
 require_relative './mongo_based_configuration'
 
@@ -79,7 +80,7 @@ module Configh
       new_config
     end
 
-    def self.find_all( for_class, store, include_descendants: false )
+    def self.find_all( for_class, store, include_descendants: false, raw: false )
       
       configuration_class = CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES[ store.class ]
       raise( UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless configuration_class
@@ -92,29 +93,11 @@ module Configh
       
       Enumerator.new do |yielder|
         configuration_class.get_config_names_of_types( store, types_to_find ).each do | configured_class, config_name |
-          yielder << [ configured_class, configured_class.find_configuration( store, config_name ) ]
+          yielder << [ configured_class, configured_class.find_configuration( store, config_name, raw: raw ) ]
         end
       end
     end
         
-    def self.find_raw( for_class, store, include_descendants: false )
-      
-      configuration_class = CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES[ store.class ]
-      raise( UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless configuration_class
-
-      types_to_find = [ for_class ]
-      if include_descendants
-        stored_classes = configuration_class.get_all_types( store )
-        types_to_find.concat stored_classes.select{ |klass| klass < for_class }
-      end
-      
-      Enumerator.new do |yielder|
-        configuration_class.get_config_names_of_types( store, types_to_find ).each do | configured_class, config_name |
-          yielder << [ configured_class, configured_class.find_configuration( store, config_name, raw: true ) ]
-        end
-      end
-    end
-
     def initialize( for_class, store, name, maintain_history: false  )
       @__type      = for_class
       @__store     = store
@@ -190,6 +173,16 @@ module Configh
     
       [ flagged_configurables, validated_values_hash, errors, warnings ]
     end  
+    
+    def test_and_return_errors
+      
+      errors = {}
+      @__type.defined_group_test_callbacks.each do |cb|
+        e = cb.test_and_return_error_string( self )
+        errors[ cb.callback_method.to_s ] = e if e
+      end
+      errors
+    end
 
     def serialize
       

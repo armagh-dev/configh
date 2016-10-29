@@ -146,12 +146,17 @@ module Configh
     def self.ensure_is_hash( value )
       
       return value if value.is_a?( Hash )
+      begin
+        h = eval( value )
+        return h if h.is_a?( Hash )
+      rescue; end
       raise TypeError, "value #{value} cannot be cast as a hash"
     end
 
     def self.ensure_is_string_array(value)
       begin
-        return value.collect{|i| ensure_is_string(i)} if value.is_a? Array
+        val = (value.is_a?(String)) ? eval(value) : value
+        return val.collect{|i| ensure_is_string(i)} if val.is_a? Array
       rescue
         raise TypeError, "value #{value} is not an array of elements that could be converted to strings"
       end
@@ -160,7 +165,8 @@ module Configh
 
     def self.ensure_is_symbol_array(value)
       begin
-        return value.collect{|i| ensure_is_symbol(i)} if value.is_a? Array
+        val = (value.is_a?(String)) ? eval(value) : value
+        return val.collect{|i| ensure_is_symbol(i)} if val.is_a? Array
       rescue
         raise TypeError, "value #{value} is not an array of elements that could be converted to symbols"
       end

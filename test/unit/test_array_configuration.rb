@@ -43,12 +43,14 @@ class TestArrayConfiguration < Test::Unit::TestCase
     klass = nil   
     d = Date.today
     bogus_class = new_configurable_class 'Bogus'
-    bogus_class.define_singleton_method( 'bogus' ){ |config| }
+    bogus_class.define_singleton_method( 'bogus_validate' ){ |config| }
+    bogus_class.define_singleton_method( 'bogus_test' ){ |config| }
     klass = new_configurable_class 'Simple'
     klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
     klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
     klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d
-    klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus
+    klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus_validate
+    klass.define_group_test_callback       callback_class: Bogus, callback_method: :bogus_test
     klass
   end
   
@@ -70,8 +72,11 @@ class TestArrayConfiguration < Test::Unit::TestCase
       end
       error
     }
+    mod.define_singleton_method( 'try_green' ) { |candidate_config|
+      candidate_config.green.custom_hue == 'pea' ? 'NO! NOT PEA!' : nil
+    }
     mod.define_group_validation_callback callback_class: Green, callback_method: :good_green
-    mod
+    mod.define_group_test_callback       callback_class: Green, callback_method: :try_green
   
   end
   
@@ -249,7 +254,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
     }
     assert_equal [ 'config1', 'config2', 'config3' ], Simple.find_all_configurations( @config_store ).collect{ |klass, config| config.__name }.sort
     assert_equal [ 'config4', 'config5' ], Child.find_all_configurations( @config_store ).collect{ |klass, config| config.__name }.sort
-    assert_equal [ 'config1', 'config2', 'config3', 'config4', 'config5' ], Simple.find_all_configurations( @config_store, :include_descendants => true ).collect{ |klass, config| config.__name }.sort
+    assert_equal [ 'config1', 'config2', 'config3', 'config4', 'config5' ], Simple.find_all_configurations( @config_store, include_descendants: true ).collect{ |klass, config| config.__name }.sort
   end
 
   def test_find_all_raw
@@ -261,10 +266,28 @@ class TestArrayConfiguration < Test::Unit::TestCase
       Child.create_configuration( @config_store, 'config4', { 'simple' => { 'p1' => 'hello4', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
       Child.create_configuration( @config_store, 'config5', { 'simple' => { 'p1' => 'hello5', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
     }
-    assert_equal [ 'config1', 'config2', 'config3' ], Simple.find_raw_configurations( @config_store ).collect{ |_k,h| h['name'] }.sort
-    assert_equal [ 'config4', 'config5' ], Child.find_raw_configurations( @config_store ).collect{ |_k,h| h['name'] }.sort
-    assert_equal [ 'config1', 'config2', 'config3', 'config4', 'config5' ], Simple.find_raw_configurations( @config_store, :include_descendants => true ).collect{ |_k, h| h['name'] }.sort
+    assert_equal [ 'config1', 'config2', 'config3' ], Simple.find_all_configurations( @config_store, raw: true ).collect{ |_k,h| h['name'] }.sort
+    assert_equal [ 'config4', 'config5' ], Child.find_all_configurations( @config_store, raw: true ).collect{ |_k,h| h['name'] }.sort
+    assert_equal [ 'config1', 'config2', 'config3', 'config4', 'config5' ], Simple.find_all_configurations( @config_store, raw: true, include_descendants: true ).collect{ |_k, h| h['name'] }.sort
   end
+  
+  def test_tests_ok
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    assert_nothing_raised {
+      config = Simple.create_configuration( @config_store, 'config1', { 'simple' => { 'p1' => 'hello1', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    }
+    assert_equal( {}, config.test_and_return_errors )
+  end    
+
+  def test_tests_bad
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    assert_nothing_raised {
+      config = Simple.create_configuration( @config_store, 'config1', { 'simple' => { 'p1' => 'hello1', 'p2' => '42'}, 'green' => { 'custom_hue' => 'pea', 'web' => false }})
+    }
+    assert_equal( {"try_green"=>"NO! NOT PEA!"}, config.test_and_return_errors )
+  end    
 
 end
 

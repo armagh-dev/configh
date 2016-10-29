@@ -193,6 +193,7 @@ class TestDataTypes < Test::Unit::TestCase
   def test_ensure_is_string_array
     assert_equal %w(a b c d e), Configh::DataTypes.ensure_is_string_array(%w(a b c d e))
     assert_equal %w(1 2 3), Configh::DataTypes.ensure_is_string_array([1,2,3])
+    assert_equal %w(a b c d e), Configh::DataTypes.ensure_is_string_array( %w(a b c d e).inspect)
     assert_raise(Configh::DataTypes::TypeError.new('value {} is not an array of strings')){
       Configh::DataTypes.ensure_is_string_array({})
     }
@@ -205,6 +206,7 @@ class TestDataTypes < Test::Unit::TestCase
 
   def test_ensure_is_symbol_array
     assert_equal [:a, :b, :c, :d, :e], Configh::DataTypes.ensure_is_symbol_array(%w(a b c d e))
+    assert_equal [:a, :b, :c, :d, :e], Configh::DataTypes.ensure_is_symbol_array([ :a, :b, :c, :d, :e ].inspect)
     assert_raise(Configh::DataTypes::TypeError.new('value {} is not an array of symbols')){
       Configh::DataTypes.ensure_is_symbol_array({})
     }
@@ -235,6 +237,17 @@ class TestDataTypes < Test::Unit::TestCase
       Configh::DataTypes.ensure_value_is_datatype( nil, 'integer' )
     end
     assert_equal "value cannot be nil", e.message
+  end
+  
+  def test_ensure_is_hash
+    [ {},
+      { 'a' => 1, 'b' => [1,2,3]},
+      '{}',
+      "{ 'a' => 1, 'b' => [1,2,3]}"
+    ].each do |val|
+      h = val.is_a?( Hash ) ? val : eval(val)
+      assert_equal h, Configh::DataTypes.ensure_value_is_datatype( val, 'hash' )
+    end
   end
   
   def test_not_supported

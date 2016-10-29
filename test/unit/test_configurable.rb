@@ -67,12 +67,14 @@ class TestConfigurable < Test::Unit::TestCase
     d = Date.today
     assert_nothing_raised {
       klass = new_configurable_class 'Bogus'
-      Bogus.define_singleton_method( 'bogus') {|values| }
+      Bogus.define_singleton_method( 'bogus_validate') {|values| }
+      Bogus.define_singleton_method( 'bogus_test'){ |values| }
       klass = new_configurable_class 'Simple'
       klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
       klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
       klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d
-      klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus
+      klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus_validate
+      klass.define_group_test_callback       callback_class: Bogus, callback_method: :bogus_test
     }
     
     assert_equal [ 'p1', 'p2', 'p3' ], klass.defined_parameters.collect{ |p| p.name }
@@ -80,6 +82,7 @@ class TestConfigurable < Test::Unit::TestCase
     assert_equal [ 'p2', 'p3' ], klass.parameters_with_defaults.collect{ |p,i| p.name }
     
     assert_equal Bogus, klass.defined_group_validation_callbacks.first.callback_class
+    assert_equal Bogus, klass.defined_group_test_callbacks.first.callback_class
     
     config = klass.create_configuration( @config_store, 'simple1', { 'simple' => { 'p1' => 'hello!', 'p2' => '5' }})
     assert_equal 'hello!', config.simple.p1
@@ -103,20 +106,26 @@ class TestConfigurable < Test::Unit::TestCase
         "hue #{h} not one of allowed values: #{ allowed_hues.join(", ")}" unless allowed_hues.include?( h )
       
       }
+      mod.define_singleton_method( 'try_green' ) { |candidate_config| nil }
       mod.define_group_validation_callback callback_class: Green, callback_method: :good_green
+      mod.define_group_test_callback callback_class: Green, callback_method: :try_green
+      
+      
       mod_config = mod.create_configuration( @config_store, 'modules1', { 'green' => { 'hue' => 'neon', 'rgb' => '140.140.140' }})
       
       mod = new_configurable_module 'Passthrough'
       mod.include Green
       
       klass = new_configurable_class 'Bogus'
-      Bogus.define_singleton_method('bogus') {|values| }
+      Bogus.define_singleton_method('bogus_validate') {|values| }
+      Bogus.define_singleton_method('bogus_test') {|values| }
       klass = new_configurable_class 'Simple'
       klass.include Passthrough
       klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
       klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
       klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d
-      klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus
+      klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus_validate
+      klass.define_group_test_callback       callback_class: Bogus, callback_method: :bogus_test
       
       config = klass.create_configuration( @config_store, 'complex', { 'simple' => { 'p1' => 'hello!', 'p2' => '5' }, 'green' => { 'hue' => 'olive'}})
       assert_equal 'hello!', config.simple.p1
@@ -132,12 +141,14 @@ class TestConfigurable < Test::Unit::TestCase
     assert_nothing_raised {
       
       klass = new_configurable_class 'Bogus'
-      Bogus.define_singleton_method( 'bogus') {|values| }
+      Bogus.define_singleton_method( 'bogus_test') {|values| }
+      Bogus.define_singleton_method( 'bogus_validate' ) { |values| }
       klass = new_configurable_class 'Simple'
       klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
       klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
       klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d, group: 'special'
-      klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus
+      klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus_validate
+      klass.define_group_test_callback       callback_class: Bogus, callback_method: :bogus_test
      
       child_klass = new_configurable_class 'Child', Simple
       child_klass.define_parameter name: 'px', description: 'this is px', type: 'integer', required: false, default: 1
@@ -156,12 +167,14 @@ class TestConfigurable < Test::Unit::TestCase
     assert_nothing_raised {
     
       klass = new_configurable_class 'Bogus'
-      Bogus.define_singleton_method( 'bogus') {|values| }
+      Bogus.define_singleton_method( 'bogus_test') {|values| }
+      Bogus.define_singleton_method( 'bogus_validate' ){ |values| }
       klass = new_configurable_class 'Simple'
       klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
       klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
       klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d, group: 'special'
-      klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus
+      klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus_validate
+      klass.define_group_test_callback       callback_class: Bogus, callback_method: :bogus_test
    
       child_klass = new_configurable_class 'Child', Simple
       child_klass.define_parameter name: 'px', description: 'this is px', type: 'integer', required: false, default: 1
@@ -181,7 +194,8 @@ class TestConfigurable < Test::Unit::TestCase
     d = Date.today
     assert_nothing_raised {
       klass = new_configurable_class 'Bogus'
-      Bogus.define_singleton_method( 'bogus') {|values| }
+      Bogus.define_singleton_method( 'bogus_validate') {|values| }
+      Bogus.define_singleton_method( 'bogus_test' ){ |values| }
       klass = new_configurable_class 'Simple'
       klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true, default: 'hi'
       klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4

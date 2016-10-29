@@ -63,6 +63,10 @@ module Configh
       def defined_group_validation_callbacks
         defined_configurables.find_all{ |vc| vc.is_a? GroupValidationCallback }
       end
+      
+      def defined_group_test_callbacks
+        defined_configurables.find_all{ |vc| vc.is_a? GroupTestCallback }
+      end
     
       def find_or_create_configuration( store, name, values_for_create: nil, maintain_history: false )
         Configh::Configuration.find_or_create( self, store, name, values_for_create: values_for_create, maintain_history: maintain_history )
@@ -76,14 +80,10 @@ module Configh
         Configh::Configuration.create( self, store, name, values, maintain_history: maintain_history )
       end
       
-      def find_all_configurations( store, include_descendants: false )
-        Configh::Configuration.find_all( self, store, include_descendants: include_descendants )
+      def find_all_configurations( store, include_descendants: false, raw: false )
+        Configh::Configuration.find_all( self, store, include_descendants: include_descendants, raw: raw )
       end
-      
-      def find_raw_configurations( store, include_descendants: false )
-        Configh::Configuration.find_raw( self, store, include_descendants: include_descendants )
-      end
-      
+            
       def validate( values_hash )
         Configh::Configuration.validate( self, values_hash )
       end
@@ -105,8 +105,17 @@ module Configh
       base.define_singleton_method( 'define_group_validation_callback' ) { |args|
         params_hash = base.const_get( configurable_key )[ :params ]
         group = args[ :group ] || base.name.downcase
+        name = args[:name] || args[:callback_method].to_s
         params_hash[ group ] ||= {}
-        params_hash[ group ][ args[:name]] = GroupValidationCallback.new( group: group, **args )
+        params_hash[ group ][ name ] = GroupValidationCallback.new( group: group, **args )
+      }
+      
+      base.define_singleton_method( 'define_group_test_callback' ) { |args|
+        params_hash = base.const_get( configurable_key )[ :params ]
+        group = args[ :group ] || base.name.downcase
+        name = args[:name] || args[:callback_method].to_s
+        params_hash[ group ] ||= {}
+        params_hash[ group ][ name ] = GroupTestCallback.new( group: group, **args )
       }
             
       base.extend ClassMethods
