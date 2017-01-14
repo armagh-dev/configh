@@ -119,6 +119,9 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_equal 'hello', config.simple.p1
     assert_equal 42, config.simple.p2
     assert_equal Date.today, config.simple.p3
+
+    assert_raise{config.simple.p2 = '0'}
+    assert_raise{config.simple.p1.gsub!('ello', 'owdy')}
   end
   
   def test_create_for_simple_class_bad_param
@@ -158,6 +161,9 @@ class TestArrayConfiguration < Test::Unit::TestCase
     }
     assert_equal 'neon', config.green.custom_hue
     assert_equal nil, config.green.rgb
+
+    assert_raise{config.green.custom_hue.web = true}
+    assert_raise{config.green.custom_hue.gsub!('eon', 'eat')}
   end
   
   def test_create_for_classes_and_modules_good
@@ -171,6 +177,11 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_equal Date.today, config.simple.p3
     assert_equal 'neon', config.green.custom_hue
     assert_equal nil, config.green.rgb
+
+    assert_raise{config.simple.p2 = '0'}
+    assert_raise{config.simple.p1.gsub!('ello', 'owdy')}
+    assert_raise{config.green.custom_hue.web = true}
+    assert_raise{config.green.custom_hue.gsub!('eon', 'eat')}
   end
    
   def test_refresh

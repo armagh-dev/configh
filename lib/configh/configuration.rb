@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+require 'ice_nine'
+
 require_relative './parameter'
 require_relative './group_validation_callback'
 require_relative './group_test_callback'
@@ -135,10 +137,10 @@ module Configh
       @__values.each do | grp, _sub |
         singleton_class.class_eval{ remove_instance_variable "@#{grp}" if instance_variable_defined? "@#{grp}"}
       end
-      
-      @__values = validated_values_hash 
-      
-      @__type.defined_parameters.each do |p|
+
+      @__values = IceNine.deep_freeze validated_values_hash
+
+        @__type.defined_parameters.each do |p|
         singleton_class.class_eval { attr_reader p.group.to_sym }
         subobj = instance_variable_get("@#{p.group}" ) || instance_variable_set( "@#{p.group}", Object.new )  
         subobj.singleton_class.class_eval { attr_reader p.name.to_sym }
