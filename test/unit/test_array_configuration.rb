@@ -201,8 +201,24 @@ class TestArrayConfiguration < Test::Unit::TestCase
     }
   end
   
-  def
-     
+  def test_unserialize
+    setup_configured_class_with_configured_modules_and_base_classes
+    serialized_config = {"type"=>"Simple", "name"=>"refreshing", "timestamp"=>"2017-02-17 21:20:19 UTC", "maintain_history"=>"false", "values"=>{"green"=>{"custom_hue"=>"neon"}, "simple"=>{"p1"=>"hello", "p2"=>"42", "p3"=>"2017-02-17"}}}
+    assert_nothing_raised {
+      Configh::Configuration.unserialize(serialized_config)
+    }
+  end
+
+  def test_unserialize_with_invalid_configuration
+    setup_configured_class_with_configured_modules_and_base_classes
+    serialized_config = {"type"=>"Simple", "name"=>"refreshing", "timestamp"=>"2017-02-17 21:20:19 UTC", "maintain_history"=>"false", "values"=>{"green"=>{"custom_hue"=>"neon"}, "simple"=>{"p1"=>"hello", "p2"=>"42", "p3"=>"2017-02-17"}}}
+    Configh::Configuration.stubs(:get_target_datatype).returns(false)
+    e = assert_raises( Configh::ConfigInitError ) {
+      Configh::Configuration.unserialize(serialized_config)
+    }
+    assert_equal 'Invalid and/or Unsupported Configuration for Group: "green" Parameters: {"custom_hue"=>"neon"} Key: "custom_hue" Value: "neon"', e.message
+  end
+
   def test_find
     setup_configured_class_with_configured_modules_and_base_classes
     config = nil
@@ -300,8 +316,20 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_equal( {"try_green"=>"NO! NOT PEA!"}, config.test_and_return_errors )
   end    
 
-end
+  def test_get_target_datatype
+    setup_configured_class_with_configured_modules_and_base_classes
+    serialized_config = {"type"=>"Simple", "name"=>"refreshing", "timestamp"=>"2017-02-17 21:20:19 UTC", "maintain_history"=>"false", "values"=>{"green"=>{"custom_hue"=>"neon"}, "simple"=>{"p1"=>"hello", "p2"=>"42", "p3"=>"2017-02-17"}}}
+    type = eval(serialized_config['type'])
+    params = type.defined_parameters
+    assert_equal "string", Configh::Configuration.get_target_datatype(params, "green", "custom_hue")
+  end
 
-  
-  
- 
+  def test_get_target_datatype_with_invalid_configuration
+    setup_configured_class_with_configured_modules_and_base_classes
+    serialized_config = {"type"=>"Simple", "name"=>"refreshing", "timestamp"=>"2017-02-17 21:20:19 UTC", "maintain_history"=>"false", "values"=>{"green"=>{"custom_hue"=>"neon"}, "simple"=>{"p1"=>"hello", "p2"=>"42", "p3"=>"2017-02-17"}}}
+    type = eval(serialized_config['type'])
+    params = type.defined_parameters
+    assert_nil Configh::Configuration.get_target_datatype(params, "red", "crimson")
+  end
+
+end

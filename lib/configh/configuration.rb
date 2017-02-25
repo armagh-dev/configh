@@ -110,19 +110,15 @@ module Configh
     end        
         
     def refresh
-      
       serialized_config = get
       raise ConfigNotFoundError, "Type #{ @__type } #{ @__name } not found during refresh" unless serialized_config
-      
       stored_config = Configuration.unserialize( serialized_config )
       return false if @__timestamp and stored_config[ 'timestamp' ] == @__timestamp
       raise ConfigRefreshError, "#{@__type} #{@__name} configuration in database is older than that previously loaded." if @__timestamp and stored_config['timestamp'] < @__timestamp
-      
       reset_values_to( stored_config[ 'values' ] )
       @__timestamp = stored_config[ 'timestamp' ]
       @__maintain_history = stored_config[ 'maintain_history' ]
       return true 
-          
     end
     
     def reset_values_to( candidate_values_hash, bypass_validation = false )
@@ -211,20 +207,22 @@ module Configh
     end
     
     def Configuration.unserialize( serialized_config )
-      
       begin
         type = eval( serialized_config[ 'type' ])
       rescue
         raise ConfigInitError, "Unrecognized type #{ serialized_values[ 'type' ]}"
       end
-      
       serialized_values = serialized_config[ 'values' ]
       unserialized_values = {}
       serialized_values.each do |grp, params|
         unserialized_values[ grp ] ||= {}
         params.each do |k,v|
-          target_datatype = type.defined_parameters.find{ |p| p.group == grp and p.name == k }.type
-          unserialized_values[ grp ][k] = DataTypes.ensure_value_is_datatype( v, target_datatype )
+          target_datatype = get_target_datatype(type.defined_parameters, grp, k)
+          if target_datatype
+            unserialized_values[grp][k] = DataTypes.ensure_value_is_datatype( v, target_datatype )
+          else
+            raise ConfigInitError, "Invalid and/or Unsupported Configuration for Group: #{grp.inspect} Parameters: #{params.inspect} Key: #{k.inspect} Value: #{v.inspect}"
+          end
         end
       end
       
@@ -238,7 +236,7 @@ module Configh
       
       unserialized_config
     end
-    
+ 
     def dup_param_with_value( p )
       
       dupped = Marshal.load( Marshal.dump ( p ))
@@ -260,9 +258,13 @@ module Configh
       temp_config = new( for_class, nil, 'temp' )
       flagged_configurables, values, errors, warnings = temp_config.validate( candidate_values )
       flagged_configurables.collect{ |cfgbl| cfgbl.to_hash }
-    end     
+    end
+
+    def self.get_target_datatype(params, group, name)
+      find_group_and_name = params.find{ |p| p.group == group and p.name == name }
+      find_group_and_name ? find_group_and_name.type : nil
+    end
+   
   end
   
 end
-
-
