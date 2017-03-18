@@ -89,7 +89,14 @@ module Configh
       def validate( values_hash )
         Configh::Configuration.validate( self, values_hash )
       end
-    
+
+      def edit_configuration( values_hash )
+        Configh::Configuration.validate( self, values_hash )
+      end
+
+      def configuration_values_valid?( values_hash )
+        Configh::Configuration.valid?( self, values_hash )
+      end
     end
   
     def self.included(base)

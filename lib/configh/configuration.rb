@@ -16,6 +16,7 @@
 #
 
 require 'ice_nine'
+require 'hash_diff'
 
 require_relative './parameter'
 require_relative './group_validation_callback'
@@ -34,7 +35,7 @@ module Configh
   class UnsupportedStoreError < StandardError; end
     
   class Configuration
-    attr_reader :__name, :__type, :__timestamp, :__values
+    attr_reader :__name, :__type, :__timestamp, :__values, :__maintain_history
   
     CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES = {
       Array   => ArrayBasedConfiguration,
@@ -120,13 +121,31 @@ module Configh
       @__maintain_history = stored_config[ 'maintain_history' ]
       return true 
     end
+
+    def update_merge( values_to_merge )
+
+      new_values = duplicate_values
+      new_values.merge! values_to_merge
+      update_replace( new_values )
+    end
+
+    def update_replace( new_values )
+
+      reset_values_to( new_values )
+
+      if @__maintain_history
+        self.class.create( @__type, @__store, @__name, new_values, maintain_history: @__maintain_history )
+      else
+        save
+      end
+    end
     
     def reset_values_to( candidate_values_hash, bypass_validation = false )
       
       validated_values_hash = candidate_values_hash
       
       unless bypass_validation
-        flagged_parameters, validated_values_hash, errors, warnings = validate( candidate_values_hash )
+        _flagged_parameters, validated_values_hash, errors, _warnings = validate( candidate_values_hash )
         raise ConfigValidationError, errors.join(",") if errors.any?
       end
       
@@ -136,7 +155,7 @@ module Configh
 
       @__values = IceNine.deep_freeze validated_values_hash
 
-        @__type.defined_parameters.each do |p|
+      @__type.defined_parameters.each do |p|
         singleton_class.class_eval { attr_reader p.group.to_sym }
         subobj = instance_variable_get("@#{p.group}" ) || instance_variable_set( "@#{p.group}", Object.new )  
         subobj.singleton_class.class_eval { attr_reader p.name.to_sym }
@@ -182,17 +201,22 @@ module Configh
       errors
     end
 
-    def serialize
+    def serialized_values
       
-      serialized_values = {}
+      s_values = {}
       @__values.each do |grp, params|
-        serialized_values[ grp ] ||= {}
+        s_values[ grp ] ||= {}
         params.each do |k,v|
           unless v.nil?
-            serialized_values[ grp ][ k ] = v.to_s
+            s_values[ grp ][ k ] = v.to_s
           end
         end
       end
+      s_values
+    end
+
+
+    def serialize
       
       @__timestamp ||= Time.now.utc
       
@@ -205,38 +229,45 @@ module Configh
       }
       
     end
-    
+
+    def Configuration.unserialized_values( param_defs, serialized_values )
+      un_values = {}
+      serialized_values.each do |grp, params|
+        un_values[ grp ] ||= {}
+        params.each do |k,v|
+          target_datatype = get_target_datatype(param_defs, grp, k)
+          if target_datatype
+            un_values[grp][k] = DataTypes.ensure_value_is_datatype( v, target_datatype )
+          else
+            raise ConfigInitError, "Invalid and/or Unsupported Configuration for Group: #{grp.inspect} Parameters: #{params.inspect} Key: #{k.inspect} Value: #{v.inspect}"
+          end
+        end
+      end
+      un_values
+    end
+
     def Configuration.unserialize( serialized_config )
       begin
         type = eval( serialized_config[ 'type' ])
       rescue
         raise ConfigInitError, "Unrecognized type #{ serialized_values[ 'type' ]}"
       end
-      serialized_values = serialized_config[ 'values' ]
-      unserialized_values = {}
-      serialized_values.each do |grp, params|
-        unserialized_values[ grp ] ||= {}
-        params.each do |k,v|
-          target_datatype = get_target_datatype(type.defined_parameters, grp, k)
-          if target_datatype
-            unserialized_values[grp][k] = DataTypes.ensure_value_is_datatype( v, target_datatype )
-          else
-            raise ConfigInitError, "Invalid and/or Unsupported Configuration for Group: #{grp.inspect} Parameters: #{params.inspect} Key: #{k.inspect} Value: #{v.inspect}"
-          end
-        end
-      end
-      
+
       unserialized_config = {
         'type'             => type,
         'name'             => serialized_config[ 'name' ],
         'timestamp'        => Time.parse( serialized_config[ 'timestamp']),
         'maintain_history' => eval(serialized_config[ 'maintain_history' ]),
-        'values'           => serialized_values       
+        'values'           => unserialized_values( type.defined_parameters, serialized_config[ 'values'] )
       }
       
       unserialized_config
     end
- 
+
+    def duplicate_values
+      Configuration.unserialized_values( @__type.defined_parameters, serialized_values )
+    end
+
     def dup_param_with_value( p )
       
       dupped = Marshal.load( Marshal.dump ( p ))
@@ -257,14 +288,40 @@ module Configh
       
       temp_config = new( for_class, nil, 'temp' )
       flagged_configurables, values, errors, warnings = temp_config.validate( candidate_values )
-      flagged_configurables.collect{ |cfgbl| cfgbl.to_hash }
+      flagged_configurables
+          .collect{ |cfgbl| cfgbl.to_hash }
+    end
+
+    def self.valid?( for_class, candidate_values )
+
+      flagged = validate( for_class, candidate_values )
+      flagged.select{ |f| f['error'] }.length == 0
     end
 
     def self.get_target_datatype(params, group, name)
       find_group_and_name = params.find{ |p| p.group == group and p.name == name }
       find_group_and_name ? find_group_and_name.type : nil
     end
-   
+
+    def change_history
+      changes = []
+      all_configs = history
+      num_changes = all_configs.length - 1
+      num_changes.times do |i|
+        comp = HashDiff::Comparison.new( all_configs[ i+1 ], all_configs[ i ])
+        comp.diff.each do |grp,params|
+          unless grp == '__timestamp'
+            params.each do |param_key, values|
+              changes << { 'at' => all_configs[i]['__timestamp'],
+                           'param' => "#{grp} parameter #{param_key}",
+                           'became' => values.first,
+                           'was' => values.last
+              }
+            end
+          end
+        end
+      end
+      changes
+    end
   end
-  
 end

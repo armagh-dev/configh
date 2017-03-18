@@ -75,14 +75,8 @@ module Configh
       configs = @__store
         .select{ |cfg| cfg[ 'type' ] == @__type.to_s and cfg[ 'name' ] == @__name }
         .sort{ |a,b| a[ 'timestamp' ] <=> b[ 'timestamp'] }
-      configs.collect{ |c| [ c['timestamp'], c['values'] ]}
+      configs.collect{ |c| c['values'].merge( '__timestamp' => c['timestamp']) }
     end  
-    
-    def detailed_history
-      begin
-        historical_configs = history
-        historical_configs.collect{ |ts,v| [ ts, @__type.validate( v )]}
-      end
-    end
+
   end 
 end

@@ -92,14 +92,8 @@ module Configh
       rescue => e
         raise e.class, "Problem pulling #{ @__type } configuration history '#{@__name}' from database: #{ e.message }"
       end
-      configs.collect{ |c| uc = Configuration.unserialize( c ),[ uc['timestamp'], uc['values'] ]}
+      configs.collect{ |c| c['values'].merge( '__timestamp' => c['timestamp']) }
     end  
-    
-    def detailed_history
-      begin
-        historical_configs = history
-        historical_configs.collect{ |ts,v| [ ts, self.detailed_validation( v )]}
-      end
-    end
+
   end 
 end

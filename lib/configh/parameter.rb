@@ -71,7 +71,7 @@ module Configh
       Hash[ 
         [ 'name', 'description', 'type', 'required', 'default', 'prompt', 
           'group', 'warning', 'error', 'value'
-        ].collect{ |pname| [ pname, send( pname.to_sym ) ] }
+        ].collect{ |pname| [ pname, send( pname.to_sym ) ]}
       ]
     end
   

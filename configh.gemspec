@@ -53,6 +53,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'mongo', '~> 2.1'
   spec.add_dependency 'ice_nine', '~> 0.11'
   spec.add_dependency 'facets', '~> 3.1'
+  spec.add_dependency 'hash_diff', '~> 0.8'
 
   spec.add_development_dependency 'bundler', '~> 1.7'
   spec.add_development_dependency 'rake', '~> 11.0'

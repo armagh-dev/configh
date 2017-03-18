@@ -64,7 +64,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
       
       error = nil
       if candidate_config.green.web
-        error = "must provide an RGB value for web colors" if candidate_config.green.rgb.nil?
+        error = 'must provide an RGB value for web colors' if candidate_config.green.rgb.nil?
       else
         allowed_custom_hues = %w{ lime pea neon olive }
         h = candidate_config.green.custom_hue
@@ -114,7 +114,8 @@ class TestArrayConfiguration < Test::Unit::TestCase
     setup_simple_configured_class
     config = nil
     assert_nothing_raised {
-      config = Simple.create_configuration( @config_store, 'simple_inst', { 'simple' => { 'p1' => 'hello', 'p2' => '42'}})
+      config = Simple.create_configuration( @config_store, 'simple_inst',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'}})
     }
     assert_equal 'hello', config.simple.p1
     assert_equal 42, config.simple.p2
@@ -130,7 +131,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
     e = assert_raises( Configh::ConfigInitError ) {
       config = Simple.create_configuration( @config_store, 'simple_bad', { 'simple' => { 'p1' => 'hello', 'p2' => 'x'}})
     }
-    assert_equal "Unable to create configuration Simple simple_bad: simple p2: type validation failed: value x cannot be cast as an integer", e.message
+    assert_equal 'Unable to create configuration Simple simple_bad: simple p2: type validation failed: value x cannot be cast as an integer', e.message
     assert_nil config
   end
 
@@ -140,7 +141,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
     e = assert_raises( Configh::ConfigInitError ) {
       config = Simple.create_configuration( @config_store, 'simple_missing', { 'simple' => { 'p2' => 41 }})
     }
-    assert_equal "Unable to create configuration Simple simple_missing: simple p1: type validation failed: value cannot be nil", e.message
+    assert_equal 'Unable to create configuration Simple simple_missing: simple p1: type validation failed: value cannot be nil', e.message
     assert_nil config
   end
 
@@ -150,15 +151,16 @@ class TestArrayConfiguration < Test::Unit::TestCase
     e =assert_raises( Configh::UnsupportedStoreError ) {
       Simple.create_configuration( Date.today, 'badstore', {} )
     }
-    assert_equal "Configuration store must be one of Array, Mongo::Collection", e.message
+    assert_equal 'Configuration store must be one of Array, Mongo::Collection', e.message
   end 
    
   def test_create_for_simple_module_good
     setup_simple_configured_module
     config = nil
-    assert_nothing_raised {
-      config = Green.create_configuration( @config_store, 'simple_mod_good', { 'green' => { 'custom_hue' => 'neon', 'web' => false }})
-    }
+    assert_nothing_raised do
+      config = Green.create_configuration( @config_store, 'simple_mod_good',
+                                           { 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    end
     assert_equal 'neon', config.green.custom_hue
     assert_equal nil, config.green.rgb
 
@@ -169,9 +171,11 @@ class TestArrayConfiguration < Test::Unit::TestCase
   def test_create_for_classes_and_modules_good
     setup_configured_class_with_configured_modules_and_base_classes
     config = nil
-    assert_nothing_raised {
-      config = Simple.create_configuration( @config_store, 'not_so_simple', { 'simple' => { 'p1' => 'hello', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
-    }
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    end
     assert_equal 'hello', config.simple.p1
     assert_equal 42, config.simple.p2
     assert_equal Date.today, config.simple.p3
@@ -183,12 +187,139 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_raise{config.green.custom_hue.web = true}
     assert_raise{config.green.custom_hue.gsub!('eon', 'eat')}
   end
-   
+
+  def test_update_merge_no_history
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    end
+    sleep 1
+
+    config.update_merge( { 'simple' => { 'p1' => 'hello again'}})
+    assert_equal 'hello again', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
+    assert_equal 'hello again', stored_config.simple.p1
+
+    assert_equal 1, stored_config.history.length
+  end
+
+  def test_update_merge_history
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    assert_nothing_raised {
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'neon', 'web' => false }},
+                                            :maintain_history => true)
+    }
+
+    sleep 1
+    config.update_merge( { 'simple' => { 'p1' => 'hello again'}})
+    assert_equal 'hello again', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
+    assert_equal 'hello again', stored_config.simple.p1
+
+    assert_equal 2, stored_config.history.length
+
+  end
+
+  def test_update_merge_fail
+
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    end
+    sleep 1
+
+    e = assert_raises( Configh::ConfigValidationError ) do
+      config.update_merge( { 'simple' => { 'p2' => 'oops' }})
+    end
+    assert_equal 'simple p1: type validation failed: value cannot be nil,simple p2: type validation failed: value oops cannot be cast as an integer', e.message
+
+    assert_equal 'hello', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1' )
+    assert_equal 'hello', config.simple.p1
+    assert_equal 1, config.history.length
+  end
+
+  def test_update_replace_no_history
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1', config_values )
+    end
+    sleep 1
+
+    config_values[ 'simple' ][ 'p1' ] = 'hello again'
+    config.update_replace( config_values )
+    assert_equal 'hello again', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
+    assert_equal 'hello again', stored_config.simple.p1
+
+    assert_equal 1, stored_config.history.length
+  end
+
+  def test_update_replace_history
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1', config_values, maintain_history: true )
+    end
+    sleep 1
+
+    config_values[ 'simple' ][ 'p1' ] = 'hello again'
+    config.update_replace( config_values )
+    assert_equal 'hello again', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
+    assert_equal 'hello again', stored_config.simple.p1
+
+    assert_equal 2, stored_config.history.length
+  end
+
+  def test_update_replace_fail
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1', config_values )
+    end
+    sleep 1
+
+    config_values[ 'simple' ][ 'p2' ] = 'oops'
+    e = assert_raises( Configh::ConfigValidationError ) do
+      config.update_replace( config_values )
+    end
+    assert_equal 'hello', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
+    assert_equal 'hello', stored_config.simple.p1
+
+    assert_equal 1, stored_config.history.length
+  end
+
   def test_refresh
     setup_configured_class_with_configured_modules_and_base_classes
     config = nil
     assert_nothing_raised {
-      config = Simple.create_configuration( @config_store, 'refreshing', { 'simple' => { 'p1' => 'hello', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      config = Simple.create_configuration( @config_store, 'refreshing',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'neon', 'web' => false }})
     }
     assert_false config.refresh
   end
@@ -197,13 +328,17 @@ class TestArrayConfiguration < Test::Unit::TestCase
     setup_configured_class_with_configured_modules_and_base_classes
     config = nil
     assert_nothing_raised {
-      config = Simple.create_configuration( @config_store, 'refreshing', { 'simple' => { 'p1' => 'hello', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      config = Simple.create_configuration( @config_store, 'refreshing',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'neon', 'web' => false }})
     }
   end
   
   def test_unserialize
     setup_configured_class_with_configured_modules_and_base_classes
-    serialized_config = {"type"=>"Simple", "name"=>"refreshing", "timestamp"=>"2017-02-17 21:20:19 UTC", "maintain_history"=>"false", "values"=>{"green"=>{"custom_hue"=>"neon"}, "simple"=>{"p1"=>"hello", "p2"=>"42", "p3"=>"2017-02-17"}}}
+    serialized_config = {'type'=>'Simple', 'name'=>'refreshing', 'timestamp'=>'2017-02-17 21:20:19 UTC',
+                         'maintain_history'=>'false', 'values'=>{'green'=>{'custom_hue'=>'neon'},
+                         'simple'=>{'p1'=>'hello', 'p2'=>'42', 'p3'=>'2017-02-17'}}}
     assert_nothing_raised {
       Configh::Configuration.unserialize(serialized_config)
     }
@@ -211,7 +346,10 @@ class TestArrayConfiguration < Test::Unit::TestCase
 
   def test_unserialize_with_invalid_configuration
     setup_configured_class_with_configured_modules_and_base_classes
-    serialized_config = {"type"=>"Simple", "name"=>"refreshing", "timestamp"=>"2017-02-17 21:20:19 UTC", "maintain_history"=>"false", "values"=>{"green"=>{"custom_hue"=>"neon"}, "simple"=>{"p1"=>"hello", "p2"=>"42", "p3"=>"2017-02-17"}}}
+    serialized_config = {'type'=>'Simple', 'name'=>'refreshing', 'timestamp'=>'2017-02-17 21:20:19 UTC',
+                         'maintain_history'=>'false',
+                         'values'=>{'green'=>{'custom_hue'=>'neon'},
+                                    'simple'=>{'p1'=>'hello', 'p2'=>'42', 'p3'=>'2017-02-17'}}}
     Configh::Configuration.stubs(:get_target_datatype).returns(false)
     e = assert_raises( Configh::ConfigInitError ) {
       Configh::Configuration.unserialize(serialized_config)
@@ -223,7 +361,9 @@ class TestArrayConfiguration < Test::Unit::TestCase
     setup_configured_class_with_configured_modules_and_base_classes
     config = nil
     assert_nothing_raised {
-      Simple.create_configuration( @config_store, 'finder', { 'simple' => { 'p1' => 'hello', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'finder',
+                                   { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
       config = Simple.find_configuration( @config_store, 'finder' )
     }
     found_params = config.find_all_parameters{ |p| p.group == 'simple' }
@@ -234,7 +374,9 @@ class TestArrayConfiguration < Test::Unit::TestCase
     setup_configured_class_with_configured_modules_and_base_classes
     config = nil
     assert_nothing_raised {
-      Simple.create_configuration( @config_store, 'finder', { 'simple' => { 'p1' => 'hello', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'finder',
+                                   { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
       config = Simple.find_configuration( @config_store, 'oops' )
     }
     assert_nil config
@@ -246,14 +388,16 @@ class TestArrayConfiguration < Test::Unit::TestCase
     e =assert_raises( Configh::UnsupportedStoreError ) {
       Simple.find_configuration( Date.today, 'badstore' )
     }
-    assert_equal "Configuration store must be one of Array, Mongo::Collection", e.message
+    assert_equal 'Configuration store must be one of Array, Mongo::Collection', e.message
   end 
 
   def test_find_or_create_found
     setup_configured_class_with_configured_modules_and_base_classes
     config = nil
     assert_nothing_raised {
-      Simple.create_configuration( @config_store, 'finder', { 'simple' => { 'p1' => 'hello', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'finder',
+                                   { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
       config = Simple.find_or_create_configuration( @config_store, 'finder' )
     }
     found_params = config.find_all_parameters{ |p| p.group == 'simple' }
@@ -264,7 +408,10 @@ class TestArrayConfiguration < Test::Unit::TestCase
     setup_configured_class_with_configured_modules_and_base_classes
     config = nil
     assert_nothing_raised {
-      config = Simple.find_or_create_configuration( @config_store, 'finder', values_for_create: { 'simple' => { 'p1' => 'hello', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      config = Simple.find_or_create_configuration( @config_store, 'finder',
+                                                    values_for_create: { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                                                         'green' => { 'custom_hue' => 'neon',
+                                                                                      'web' => false }})
     }
     found_params = config.find_all_parameters{ |p| p.group == 'simple' }
     assert_equal [ 'hello', 42, Date.today ], found_params.collect{ |p| p.value }
@@ -273,36 +420,66 @@ class TestArrayConfiguration < Test::Unit::TestCase
   def test_find_all
     setup_configured_class_with_configured_modules_and_base_classes
     assert_nothing_raised {
-      Simple.create_configuration( @config_store, 'config1', { 'simple' => { 'p1' => 'hello1', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
-      Simple.create_configuration( @config_store, 'config2', { 'simple' => { 'p1' => 'hello2', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
-      Simple.create_configuration( @config_store, 'config3', { 'simple' => { 'p1' => 'hello3', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
-      Child.create_configuration( @config_store, 'config4', { 'simple' => { 'p1' => 'hello4', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
-      Child.create_configuration( @config_store, 'config5', { 'simple' => { 'p1' => 'hello5', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'config1',
+                                   { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'config2',
+                                   { 'simple' => { 'p1' => 'hello2', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'config3',
+                                   { 'simple' => { 'p1' => 'hello3', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Child.create_configuration( @config_store, 'config4',
+                                  { 'simple' => { 'p1' => 'hello4', 'p2' => '42'},
+                                    'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Child.create_configuration( @config_store, 'config5',
+                                  { 'simple' => { 'p1' => 'hello5', 'p2' => '42'},
+                                    'green' => { 'custom_hue' => 'neon', 'web' => false }})
     }
-    assert_equal [ 'config1', 'config2', 'config3' ], Simple.find_all_configurations( @config_store ).collect{ |klass, config| config.__name }.sort
-    assert_equal [ 'config4', 'config5' ], Child.find_all_configurations( @config_store ).collect{ |klass, config| config.__name }.sort
-    assert_equal [ 'config1', 'config2', 'config3', 'config4', 'config5' ], Simple.find_all_configurations( @config_store, include_descendants: true ).collect{ |klass, config| config.__name }.sort
+    assert_equal %w{ config1 config2 config3 },
+                 Simple.find_all_configurations( @config_store ).collect{ |klass, config| config.__name }.sort
+    assert_equal %w{ config4 config5 },
+                 Child.find_all_configurations( @config_store ).collect{ |klass, config| config.__name }.sort
+    assert_equal %w{ config1 config2 config3 config4 config5 },
+                 Simple.find_all_configurations( @config_store, include_descendants: true )
+                     .collect{ |klass, config| config.__name }.sort
   end
 
   def test_find_all_raw
     setup_configured_class_with_configured_modules_and_base_classes
     assert_nothing_raised {
-      Simple.create_configuration( @config_store, 'config1', { 'simple' => { 'p1' => 'hello1', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
-      Simple.create_configuration( @config_store, 'config2', { 'simple' => { 'p1' => 'hello2', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
-      Simple.create_configuration( @config_store, 'config3', { 'simple' => { 'p1' => 'hello3', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
-      Child.create_configuration( @config_store, 'config4', { 'simple' => { 'p1' => 'hello4', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
-      Child.create_configuration( @config_store, 'config5', { 'simple' => { 'p1' => 'hello5', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'config1',
+                                   { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'config2',
+                                   { 'simple' => { 'p1' => 'hello2', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Simple.create_configuration( @config_store, 'config3',
+                                   { 'simple' => { 'p1' => 'hello3', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Child.create_configuration( @config_store, 'config4',
+                                  { 'simple' => { 'p1' => 'hello4', 'p2' => '42'},
+                                    'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      Child.create_configuration( @config_store, 'config5',
+                                  { 'simple' => { 'p1' => 'hello5', 'p2' => '42'},
+                                    'green' => { 'custom_hue' => 'neon', 'web' => false }})
     }
-    assert_equal [ 'config1', 'config2', 'config3' ], Simple.find_all_configurations( @config_store, raw: true ).collect{ |_k,h| h['name'] }.sort
-    assert_equal [ 'config4', 'config5' ], Child.find_all_configurations( @config_store, raw: true ).collect{ |_k,h| h['name'] }.sort
-    assert_equal [ 'config1', 'config2', 'config3', 'config4', 'config5' ], Simple.find_all_configurations( @config_store, raw: true, include_descendants: true ).collect{ |_k, h| h['name'] }.sort
+    assert_equal %w{config1 config2 config3},
+                 Simple.find_all_configurations( @config_store, raw: true ).collect{ |_k,h| h['name'] }.sort
+    assert_equal %w{config4 config5},
+                 Child.find_all_configurations( @config_store, raw: true ).collect{ |_k,h| h['name'] }.sort
+    assert_equal %w{config1 config2 config3 config4 config5},
+                 Simple.find_all_configurations( @config_store, raw: true, include_descendants: true )
+                     .collect{ |_k, h| h['name'] }.sort
   end
   
   def test_tests_ok
     setup_configured_class_with_configured_modules_and_base_classes
     config = nil
     assert_nothing_raised {
-      config = Simple.create_configuration( @config_store, 'config1', { 'simple' => { 'p1' => 'hello1', 'p2' => '42'}, 'green' => { 'custom_hue' => 'neon', 'web' => false }})
+      config = Simple.create_configuration( @config_store, 'config1',
+                                            { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'neon', 'web' => false }})
     }
     assert_equal( {}, config.test_and_return_errors )
   end    
@@ -311,25 +488,120 @@ class TestArrayConfiguration < Test::Unit::TestCase
     setup_configured_class_with_configured_modules_and_base_classes
     config = nil
     assert_nothing_raised {
-      config = Simple.create_configuration( @config_store, 'config1', { 'simple' => { 'p1' => 'hello1', 'p2' => '42'}, 'green' => { 'custom_hue' => 'pea', 'web' => false }})
+      config = Simple.create_configuration( @config_store, 'config1',
+                                            { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'pea', 'web' => false }})
     }
-    assert_equal( {"try_green"=>"NO! NOT PEA!"}, config.test_and_return_errors )
+    assert_equal( {'try_green'=>'NO! NOT PEA!'}, config.test_and_return_errors )
   end    
 
   def test_get_target_datatype
     setup_configured_class_with_configured_modules_and_base_classes
-    serialized_config = {"type"=>"Simple", "name"=>"refreshing", "timestamp"=>"2017-02-17 21:20:19 UTC", "maintain_history"=>"false", "values"=>{"green"=>{"custom_hue"=>"neon"}, "simple"=>{"p1"=>"hello", "p2"=>"42", "p3"=>"2017-02-17"}}}
+    serialized_config = {'type'=>'Simple', 'name'=>'refreshing', 'timestamp'=>'2017-02-17 21:20:19 UTC',
+                         'maintain_history'=>'false',
+                         'values'=>{'green'=>{'custom_hue'=>'neon'},
+                                    'simple'=>{'p1'=>'hello', 'p2'=>'42', 'p3'=>'2017-02-17'}}}
     type = eval(serialized_config['type'])
     params = type.defined_parameters
-    assert_equal "string", Configh::Configuration.get_target_datatype(params, "green", "custom_hue")
+    assert_equal 'string', Configh::Configuration.get_target_datatype(params, 'green', 'custom_hue')
   end
 
   def test_get_target_datatype_with_invalid_configuration
     setup_configured_class_with_configured_modules_and_base_classes
-    serialized_config = {"type"=>"Simple", "name"=>"refreshing", "timestamp"=>"2017-02-17 21:20:19 UTC", "maintain_history"=>"false", "values"=>{"green"=>{"custom_hue"=>"neon"}, "simple"=>{"p1"=>"hello", "p2"=>"42", "p3"=>"2017-02-17"}}}
+    serialized_config = {'type'=>'Simple', 'name'=>'refreshing', 'timestamp'=>'2017-02-17 21:20:19 UTC',
+                         'maintain_history'=>'false',
+                         'values'=>{'green'=>{'custom_hue'=>'neon'},
+                                    'simple'=>{'p1'=>'hello', 'p2'=>'42', 'p3'=>'2017-02-17'}}}
     type = eval(serialized_config['type'])
     params = type.defined_parameters
-    assert_nil Configh::Configuration.get_target_datatype(params, "red", "crimson")
+    assert_nil Configh::Configuration.get_target_datatype(params, 'red', 'crimson')
+  end
+
+  def test_get_readers
+    setup_simple_configured_class
+
+    config = nil
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'simple_inst2',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'}}, maintain_history: true)
+    end
+    assert_equal 'simple_inst2', config.__name
+    assert_true  config.__maintain_history
+    assert_equal Time, config.__timestamp.class
+    assert_equal Simple, config.__type
+  end
+
+  def test_dup_values
+    setup_configured_class_with_configured_modules_and_base_classes
+    config_values = { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    config = Simple.create_configuration( @config_store, 'config1', config_values )
+    assert_equal 'hello1', config.simple.p1
+    assert_equal 42, config.simple.p2
+    assert_equal 'neon', config.green.custom_hue
+    assert_equal false, config.green.web
+
+    dupped_values = config.duplicate_values
+    assert_equal 'hello1', dupped_values[ 'simple' ][ 'p1' ]
+    assert_equal 42, dupped_values[ 'simple' ][ 'p2' ]
+    assert_equal 'neon', dupped_values[ 'green' ][ 'custom_hue' ]
+    assert_equal false, dupped_values[ 'green' ][ 'web' ]
+
+    assert_not_same config_values[ 'simple' ][ 'p1' ], dupped_values[ 'simple' ][ 'p1']
+    assert_not_same config_values[ 'simple' ][ 'p2' ], dupped_values[ 'simple' ][ 'p2']
+    assert_not_same config_values[ 'green' ][ 'custom_hue' ], dupped_values[ 'simple' ][ 'custom_hue']
+    assert_not_same config_values[ 'green' ][ 'web' ], dupped_values[ 'simple' ][ 'web']
+  end
+
+  def test_change_history
+    setup_configured_class_with_configured_modules_and_base_classes
+    config_values = { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    config = Simple.create_configuration( @config_store, 'config1', config_values, maintain_history: true )
+
+    sleep 1
+    config_values['simple'].delete 'p2'
+    config_values[ 'simple'][ 'p1' ] = 'goodbye'
+    config.update_replace config_values
+
+    change_history = []
+    assert_nothing_raised do
+      change_history = config.change_history
+    end
+    assert_equal 2, change_history.length
+    assert_nothing_raised{ Time.parse( change_history.first[ 'at' ] )}
+    assert_equal 'simple parameter p1', change_history.first[ 'param' ]
+    assert_equal 'hello1', change_history.first[ 'was' ]
+    assert_equal 'goodbye', change_history.first[ 'became' ]
+    assert_nothing_raised{ Time.parse( change_history.last[ 'at' ] )}
+    assert_equal 'simple parameter p2', change_history.last[ 'param' ]
+    assert_equal '42', change_history.last[ 'was' ]
+    assert_equal '4', change_history.last[ 'became' ]
+
+  end
+
+  def test_config_values_valid?
+    setup_configured_class_with_configured_modules_and_base_classes
+    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    assert_true Simple.configuration_values_valid?( config_values )
+  end
+
+  def test_config_values_valid_not
+    setup_configured_class_with_configured_modules_and_base_classes
+    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => 'oops'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    assert_false Simple.configuration_values_valid?( config_values )
+  end
+
+  def test_edit_configuration
+    setup_configured_class_with_configured_modules_and_base_classes
+    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => 'oops'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    edit_info = Simple.edit_configuration( config_values )
+    assert_equal 6, edit_info.length
+    assert_equal 'type validation failed: value oops cannot be cast as an integer',
+                 edit_info.find{ |p| p['error']}['error']
   end
 
 end

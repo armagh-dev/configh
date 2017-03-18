@@ -44,6 +44,10 @@ module Configh
       flagged_vc.error = returned_error
       flagged_vc
     end
+
+    def to_hash
+      Hash[[ 'group', 'error'].collect{ |pname| [ pname, send( pname.to_sym ) ]}]
+    end
       
   end    
 end

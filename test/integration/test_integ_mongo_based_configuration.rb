@@ -295,4 +295,130 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
     assert_equal [ 'config4', 'config5' ], Child.find_all_configurations( @config_store ).collect{ |klass, config| config.__name }.sort
     assert_equal [ 'config1', 'config2', 'config3', 'config4', 'config5' ], Simple.find_all_configurations( @config_store, :include_descendants => true ).collect{ |klass, config| config.__name }.sort
   end
+
+  def test_update_merge_no_history
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    end
+    sleep 1
+
+    config.update_merge( { 'simple' => { 'p1' => 'hello again'}})
+    assert_equal 'hello again', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
+    assert_equal 'hello again', stored_config.simple.p1
+
+    assert_equal 1, stored_config.history.length
+  end
+
+  def test_update_merge_history
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    assert_nothing_raised {
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'neon', 'web' => false }},
+                                            :maintain_history => true)
+    }
+
+    sleep 1
+    config.update_merge( { 'simple' => { 'p1' => 'hello again'}})
+    assert_equal 'hello again', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
+    assert_equal 'hello again', stored_config.simple.p1
+
+    assert_equal 2, stored_config.history.length
+
+  end
+
+  def test_update_merge_fail
+
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1',
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                              'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    end
+    sleep 1
+
+    e = assert_raises( Configh::ConfigValidationError ) do
+      config.update_merge( { 'simple' => { 'p2' => 'oops' }})
+    end
+    assert_equal 'simple p1: type validation failed: value cannot be nil,simple p2: type validation failed: value oops cannot be cast as an integer', e.message
+
+    assert_equal 'hello', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1' )
+    assert_equal 'hello', config.simple.p1
+    assert_equal 1, config.history.length
+  end
+
+  def test_update_replace_no_history
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1', config_values )
+    end
+    sleep 1
+
+    config_values[ 'simple' ][ 'p1' ] = 'hello again'
+    config.update_replace( config_values )
+    assert_equal 'hello again', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
+    assert_equal 'hello again', stored_config.simple.p1
+
+    assert_equal 1, stored_config.history.length
+  end
+
+  def test_update_replace_history
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1', config_values, maintain_history: true )
+    end
+    sleep 1
+
+    config_values[ 'simple' ][ 'p1' ] = 'hello again'
+    config.update_replace( config_values )
+    assert_equal 'hello again', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
+    assert_equal 'hello again', stored_config.simple.p1
+
+    assert_equal 2, stored_config.history.length
+  end
+
+  def test_update_replace_fail
+    setup_configured_class_with_configured_modules_and_base_classes
+    config = nil
+    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    assert_nothing_raised do
+      config = Simple.create_configuration( @config_store, 'not_so_simple_u1', config_values )
+    end
+    sleep 1
+
+    config_values[ 'simple' ][ 'p2' ] = 'oops'
+    e = assert_raises( Configh::ConfigValidationError ) do
+      config.update_replace( config_values )
+    end
+    assert_equal 'hello', config.simple.p1
+
+    stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
+    assert_equal 'hello', stored_config.simple.p1
+
+    assert_equal 1, stored_config.history.length
+  end
+
 end
