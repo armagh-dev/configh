@@ -328,6 +328,7 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
     sleep 1
     config.update_merge( { 'simple' => { 'p1' => 'hello again'}})
     assert_equal 'hello again', config.simple.p1
+    assert_equal 42, config.simple.p2
 
     stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
     assert_equal 'hello again', stored_config.simple.p1
@@ -350,7 +351,7 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
     e = assert_raises( Configh::ConfigValidationError ) do
       config.update_merge( { 'simple' => { 'p2' => 'oops' }})
     end
-    assert_equal 'simple p1: type validation failed: value cannot be nil,simple p2: type validation failed: value oops cannot be cast as an integer', e.message
+    assert_equal 'simple p2: type validation failed: value oops cannot be cast as an integer', e.message
 
     assert_equal 'hello', config.simple.p1
 
@@ -419,6 +420,37 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
     assert_equal 'hello', stored_config.simple.p1
 
     assert_equal 1, stored_config.history.length
+  end
+
+  def test_max_timestamp
+    setup_configured_class_with_configured_modules_and_base_classes
+    config_values = { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    simple_config = nil
+    child_config = nil
+    assert_nothing_raised {
+      simple_config = Simple.create_configuration( @config_store, 'config1', config_values, maintain_history: true )
+      Simple.create_configuration( @config_store, 'config2', config_values, maintain_history: true )
+      Simple.create_configuration( @config_store, 'config3', config_values, maintain_history: true )
+      child_config = Child.create_configuration( @config_store, 'config4', config_values, maintain_history: true )
+      Child.create_configuration( @config_store, 'config5', config_values, maintain_history: true )
+    }
+    ts1 = Simple.max_timestamp( @config_store )
+
+    config_values['simple'].delete 'p2'
+    config_values[ 'simple'][ 'p1' ] = 'goodbye'
+    simple_config.update_replace config_values
+    ts2 = Simple.max_timestamp( @config_store )
+
+    Child.create_configuration( @config_store, 'config6', config_values, maintain_history: true )
+    ts3 = Simple.max_timestamp( @config_store )
+
+    config_values[ 'simple' ][ 'p1' ] = 'byebye'
+    child_config.update_replace config_values
+    ts4 = Simple.max_timestamp( @config_store )
+
+    assert_true [ ts1, ts2, ts3, ts4 ] == [ ts1, ts2, ts3, ts4 ].sort
+
   end
 
 end

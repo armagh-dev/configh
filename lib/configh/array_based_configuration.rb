@@ -46,7 +46,11 @@ module Configh
       end
       all_types
     end
-         
+
+    def self.max_timestamp_for_types(array, types)
+      array.collect{ |config| config['timestamp'] if types.include?(config['type']) }.compact.max
+    end
+
     def get
      config = @__store
         .select{ |cfg| cfg[ 'type'] == @__type.to_s and cfg[ 'name' ] == @__name }
@@ -58,16 +62,16 @@ module Configh
     
     def save
     
-      trying_timestamp = Time.now.utc.round
+#      trying_timestamp = Time.now.utc.round
         
       trying_config = serialize
-      trying_config[ 'timestamp' ] = trying_timestamp.to_s
+ #     trying_config[ 'timestamp' ] = trying_timestamp.to_s
       
       unless @__maintain_history
         @__store.delete_if{ |cfg| cfg[ 'type' ] == @__type.to_s and cfg[ 'name' ] == @__name }
       end
       @__store << trying_config
-      @__timestamp = trying_timestamp
+      @__timestamp = Time.parse(trying_config[ 'timestamp' ])
     end
   
     def history

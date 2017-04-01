@@ -15,7 +15,6 @@
 # limitations under the License.
 #
 
-#require_relative '../../helpers/coverage_helper'
 require_relative '../../lib/configh/configuration'
 require_relative '../../lib/configh/configurable'
 
@@ -25,10 +24,8 @@ require 'mocha/test_unit'
 class TestArrayConfiguration < Test::Unit::TestCase
   
   def setup
-    
     @config_store = []
     @defined_modules_and_classes = []
-    
   end
   
   def teardown
@@ -39,12 +36,11 @@ class TestArrayConfiguration < Test::Unit::TestCase
   end
   
   def setup_simple_configured_class
-    
-    klass = nil   
+
     d = Date.today
     bogus_class = new_configurable_class 'Bogus'
-    bogus_class.define_singleton_method( 'bogus_validate' ){ |config| }
-    bogus_class.define_singleton_method( 'bogus_test' ){ |config| }
+    bogus_class.define_singleton_method('bogus_validate'){ |config| }
+    bogus_class.define_singleton_method('bogus_test'){ |config| }
     klass = new_configurable_class 'Simple'
     klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
     klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
@@ -60,15 +56,14 @@ class TestArrayConfiguration < Test::Unit::TestCase
     mod.define_parameter name: 'custom_hue', description: 'shade of green', type: 'string', required: false, default: 'lime'
     mod.define_parameter name: 'rgb', description: 'rgb value', type: 'string', required: false
     mod.define_parameter name: 'web', description: 'web standard color', type: 'boolean', required:true
-    mod.define_singleton_method( 'good_green' ) { |candidate_config|
-      
+    mod.define_singleton_method('good_green') { |candidate_config|
       error = nil
       if candidate_config.green.web
         error = 'must provide an RGB value for web colors' if candidate_config.green.rgb.nil?
       else
-        allowed_custom_hues = %w{ lime pea neon olive }
+        allowed_custom_hues = %w(lime pea neon olive)
         h = candidate_config.green.custom_hue
-        error = "hue #{h} not one of allowed values: #{ allowed_hues.join(", ")}" unless allowed_custom_hues.include?( h )
+        error = "hue #{h} not one of allowed values: #{allowed_custom_hues.join(", ")}" unless allowed_custom_hues.include?( h )
       end
       error
     }
@@ -147,12 +142,34 @@ class TestArrayConfiguration < Test::Unit::TestCase
 
   def test_create_bad_store_class
     setup_configured_class_with_configured_modules_and_base_classes
-    config = nil
     e =assert_raises( Configh::UnsupportedStoreError ) {
       Simple.create_configuration( Date.today, 'badstore', {} )
     }
     assert_equal 'Configuration store must be one of Array, Mongo::Collection', e.message
-  end 
+  end
+
+  def test_create_dup_name
+    setup_simple_configured_class
+    assert_nothing_raised {
+      Simple.create_configuration(@config_store, 'simple_inst', {'simple' => {'p1' => 'hello', 'p2' => '42'}})
+    }
+    e =assert_raises( Configh::ConfigInitError ) {
+      Simple.create_configuration(@config_store, 'simple_inst', {} )
+    }
+    assert_equal 'Name already in use', e.message
+  end
+
+  def test_create_dup_name_maintain_histoyr
+    setup_simple_configured_class
+    assert_nothing_raised {
+      Simple.create_configuration(@config_store, 'simple_inst', {'simple' => {'p1' => 'hello', 'p2' => '42'}}, maintain_history: true)
+    }
+    e =assert_raises( Configh::ConfigInitError ) {
+      Simple.create_configuration(@config_store, 'simple_inst', {} )
+    }
+    assert_equal 'Name already in use', e.message
+
+  end
    
   def test_create_for_simple_module_good
     setup_simple_configured_module
@@ -196,10 +213,11 @@ class TestArrayConfiguration < Test::Unit::TestCase
                                             { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
                                               'green' => { 'custom_hue' => 'neon', 'web' => false }})
     end
-    sleep 1
+ #   sleep 1
 
     config.update_merge( { 'simple' => { 'p1' => 'hello again'}})
     assert_equal 'hello again', config.simple.p1
+    assert_equal 42, config.simple.p2
 
     stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1')
     assert_equal 'hello again', stored_config.simple.p1
@@ -217,7 +235,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
                                             :maintain_history => true)
     }
 
-    sleep 1
+#    sleep 1
     config.update_merge( { 'simple' => { 'p1' => 'hello again'}})
     assert_equal 'hello again', config.simple.p1
 
@@ -237,18 +255,18 @@ class TestArrayConfiguration < Test::Unit::TestCase
                                             { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
                                               'green' => { 'custom_hue' => 'neon', 'web' => false }})
     end
-    sleep 1
+#    sleep 1
 
     e = assert_raises( Configh::ConfigValidationError ) do
       config.update_merge( { 'simple' => { 'p2' => 'oops' }})
     end
-    assert_equal 'simple p1: type validation failed: value cannot be nil,simple p2: type validation failed: value oops cannot be cast as an integer', e.message
+    assert_equal 'simple p2: type validation failed: value oops cannot be cast as an integer', e.message
 
     assert_equal 'hello', config.simple.p1
 
     stored_config = Simple.find_configuration( @config_store, 'not_so_simple_u1' )
-    assert_equal 'hello', config.simple.p1
-    assert_equal 1, config.history.length
+    assert_equal 'hello', stored_config.simple.p1
+    assert_equal 1, stored_config.history.length
   end
 
   def test_update_replace_no_history
@@ -259,7 +277,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_nothing_raised do
       config = Simple.create_configuration( @config_store, 'not_so_simple_u1', config_values )
     end
-    sleep 1
+#    sleep 1
 
     config_values[ 'simple' ][ 'p1' ] = 'hello again'
     config.update_replace( config_values )
@@ -279,7 +297,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_nothing_raised do
       config = Simple.create_configuration( @config_store, 'not_so_simple_u1', config_values, maintain_history: true )
     end
-    sleep 1
+ #   sleep 1
 
     config_values[ 'simple' ][ 'p1' ] = 'hello again'
     config.update_replace( config_values )
@@ -299,7 +317,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_nothing_raised do
       config = Simple.create_configuration( @config_store, 'not_so_simple_u1', config_values )
     end
-    sleep 1
+#    sleep 1
 
     config_values[ 'simple' ][ 'p2' ] = 'oops'
     e = assert_raises( Configh::ConfigValidationError ) do
@@ -559,7 +577,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
                       'green' => { 'custom_hue' => 'neon', 'web' => false }}
     config = Simple.create_configuration( @config_store, 'config1', config_values, maintain_history: true )
 
-    sleep 1
+#    sleep 1
     config_values['simple'].delete 'p2'
     config_values[ 'simple'][ 'p1' ] = 'goodbye'
     config.update_replace config_values
@@ -602,6 +620,36 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_equal 6, edit_info.length
     assert_equal 'type validation failed: value oops cannot be cast as an integer',
                  edit_info.find{ |p| p['error']}['error']
+  end
+
+  def test_max_timestamp
+    setup_configured_class_with_configured_modules_and_base_classes
+    config_values = { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    simple_config = nil
+    child_config = nil
+    assert_nothing_raised {
+      simple_config = Simple.create_configuration( @config_store, 'config1', config_values, maintain_history: true )
+      Simple.create_configuration( @config_store, 'config2', config_values, maintain_history: true )
+      Simple.create_configuration( @config_store, 'config3', config_values, maintain_history: true )
+      child_config = Child.create_configuration( @config_store, 'config4', config_values, maintain_history: true )
+      Child.create_configuration( @config_store, 'config5', config_values, maintain_history: true )
+    }
+    ts1 = Simple.max_timestamp( @config_store )
+
+    config_values['simple'].delete 'p2'
+    config_values[ 'simple'][ 'p1' ] = 'goodbye'
+    simple_config.update_replace config_values
+    ts2 = Simple.max_timestamp( @config_store )
+
+    Child.create_configuration( @config_store, 'config6', config_values, maintain_history: true )
+    ts3 = Simple.max_timestamp( @config_store )
+
+    config_values[ 'simple' ][ 'p1' ] = 'byebye'
+    child_config.update_replace config_values
+    ts4 = Simple.max_timestamp( @config_store )
+
+    assert_true [ ts1, ts2, ts3, ts4 ] == [ ts1, ts2, ts3, ts4 ].sort
   end
 
 end

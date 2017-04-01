@@ -221,7 +221,7 @@ class TestConfigurable < Test::Unit::TestCase
       klass = nil
     
       d = Date.today
-      assert_nothing_raised {
+      assert_nothing_raised do
         klass = new_configurable_class 'Bogus'
         Bogus.define_singleton_method( 'bogus') {|values| }
         simple_class = new_configurable_class 'Simple'
@@ -243,7 +243,45 @@ class TestConfigurable < Test::Unit::TestCase
         assert_equal d, config.explicit.p3
         assert_equal 7, config.simple.p3
         assert_equal 'yo', config.bling.p4
-      }
+      end
+  end
+
+  def test_force_update
+
+    klass = nil
+    d = Date.today
+    assert_nothing_raised do
+      klass = new_configurable_class 'Bogus'
+      Bogus.define_singleton_method( 'bogus_validate') {|values| }
+      Bogus.define_singleton_method( 'bogus_test'){ |values| }
+      klass = new_configurable_class 'Simple'
+      klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
+      klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
+      klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d
+      klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus_validate
+      klass.define_group_test_callback       callback_class: Bogus, callback_method: :bogus_test
     end
-  
+
+    config = klass.create_configuration( @config_store, 'simple1', { 'simple' => { 'p1' => 'hello!', 'p2' => '5' }})
+    assert_equal 'hello!', config.simple.p1
+    assert_equal 5, config.simple.p2
+    assert_equal d, config.simple.p3
+
+    h = @config_store.find{ |c_hash| c_hash['name'] == 'simple1' }
+    h['values'][ 'simple' ][ 'p3' ] = "broken stored config - i'm not a date!"
+    values = h['values']
+    assert_raises do
+      klass.find_configuration( @config_store, 'simple1' )
+    end
+
+    values[ 'simple' ][ 'p3' ] = Date.today
+    klass.force_update_configuration(@config_store, 'simple1', values, maintain_history:true )
+
+    stored_updated_config = nil
+    assert_nothing_raised do
+      stored_updated_config = klass.find_configuration( @config_store, 'simple1' )
+    end
+    assert_equal Date.today, stored_updated_config.simple.p3
+  end
+
 end

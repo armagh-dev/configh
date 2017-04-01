@@ -49,6 +49,17 @@ module Configh
         t
         }
     end
+
+    def self.max_timestamp_for_types( collection, types)
+
+      result = collection.aggregate( [
+          { '$match' => { 'type' => { '$in' => types }}},
+          { '$group' => { '_id' => 'max_timestamp', 'max_timestamp': { '$max' => '$timestamp'}}}
+      ]).first
+      result[ 'max_timestamp' ]
+    rescue => e
+      raise e.class, "Problem getting max config timestamp: #{ e.message }"
+    end
          
     def get
       begin

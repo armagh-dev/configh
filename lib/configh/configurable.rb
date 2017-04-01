@@ -81,9 +81,17 @@ module Configh
       def create_configuration( store, name, values, maintain_history: false )
         Configh::Configuration.create( self, store, name, values, maintain_history: maintain_history )
       end
+
+      def force_update_configuration( store, name, new_values, maintain_history: false )
+        Configh::Configuration.create( self, store, name, new_values, maintain_history: maintain_history, updating: true )
+      end
       
       def find_all_configurations( store, include_descendants: false, raw: false )
         Configh::Configuration.find_all( self, store, include_descendants: include_descendants, raw: raw )
+      end
+
+      def max_timestamp( store )
+        Configh::Configuration.max_timestamp( self, store )
       end
             
       def validate( values_hash )

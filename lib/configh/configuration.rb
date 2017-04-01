@@ -44,8 +44,7 @@ module Configh
     
     def self.find_or_create( for_class, store, name, values_for_create: {}, maintain_history: false )
       
-      config = find( for_class, store, name ) || 
-               create( for_class, store, name, values_for_create, maintain_history: false )
+      find( for_class, store, name ) || create( for_class, store, name, values_for_create, maintain_history: false )
     end
     
     def self.find( for_class, store, name, raw: false ) 
@@ -68,14 +67,15 @@ module Configh
       result
     end
     
-    def self.create( for_class, store, name, values, maintain_history: false )
+    def self.create(for_class, store, name, values, maintain_history: false, updating:false)
       
       config_class = CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES[ store.class ]
-      raise( UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless config_class
+      raise(UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless config_class
+      raise(ConfigInitError, "Name already in use") if find(for_class, store, name) && !updating
 
-      new_config = config_class.new( for_class, store, name, maintain_history: maintain_history )
+      new_config = config_class.new(for_class, store, name, maintain_history: maintain_history)
       begin
-        new_config.reset_values_to( values )
+        new_config.reset_values_to(values)
         new_config.save
       rescue ConfigValidationError => e
         raise ConfigInitError, "Unable to create configuration #{for_class.name} #{name}: #{ e.message }"
@@ -99,6 +99,18 @@ module Configh
           yielder << [ configured_class, configured_class.find_configuration( store, config_name, raw: raw ) ]
         end
       end
+    end
+
+    def self.max_timestamp( for_class, store )
+
+      configuration_class = CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES[ store.class ]
+      raise( UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless configuration_class
+
+      types_to_find = [ for_class ]
+      stored_classes = configuration_class.get_all_types( store )
+      types_to_find.concat stored_classes.select{ |klass| klass < for_class }
+      types_to_find.collect!(&:to_s)
+      configuration_class.max_timestamp_for_types( store, types_to_find )
     end
         
     def initialize( for_class, store, name, maintain_history: false  )
@@ -125,7 +137,10 @@ module Configh
     def update_merge( values_to_merge )
 
       new_values = duplicate_values
-      new_values.merge! values_to_merge
+      values_to_merge.each do |grp,params|
+        new_values[grp] ||= {}
+        new_values[grp].merge! params
+      end
       update_replace( new_values )
     end
 
@@ -134,7 +149,7 @@ module Configh
       reset_values_to( new_values )
 
       if @__maintain_history
-        self.class.create( @__type, @__store, @__name, new_values, maintain_history: @__maintain_history )
+        self.class.create( @__type, @__store, @__name, new_values, maintain_history: @__maintain_history, updating:true )
       else
         save
       end
@@ -150,7 +165,7 @@ module Configh
       end
       
       @__values.each do | grp, _sub |
-        singleton_class.class_eval{ remove_instance_variable "@#{grp}" if instance_variable_defined? "@#{grp}"}
+        singleton_class.class_eval { remove_instance_variable "@#{grp}" if instance_variable_defined? "@#{grp}"}
       end
 
       @__values = IceNine.deep_freeze validated_values_hash
