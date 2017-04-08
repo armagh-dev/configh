@@ -23,6 +23,7 @@ require_relative './group_validation_callback'
 require_relative './group_test_callback'
 require_relative './array_based_configuration'
 require_relative './mongo_based_configuration'
+require_relative './config_store'
 
 module Configh
   
@@ -32,26 +33,18 @@ module Configh
   class ConfigNotFoundError < StandardError; end
   class ConfigUnchangedWarning < StandardError; end
   class UnrecognizedTypeError < StandardError; end
-  class UnsupportedStoreError < StandardError; end
-    
+
   class Configuration
     attr_reader :__name, :__type, :__timestamp, :__values, :__maintain_history
   
-    CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES = {
-      Array   => ArrayBasedConfiguration,
-      Mongo::Collection => MongoBasedConfiguration
-    }
-    
+
     def self.find_or_create( for_class, store, name, values_for_create: {}, maintain_history: false )
-      
-      find( for_class, store, name ) || create( for_class, store, name, values_for_create, maintain_history: false )
+      find( for_class, store, name ) || create( for_class, store, name, values_for_create, maintain_history: maintain_history )
     end
     
     def self.find( for_class, store, name, raw: false ) 
-      
-      config_class = CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES[ store.class ]
-      raise( UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless config_class
 
+      config_class = ConfigStore.configuration_class( store )
       new_config = config_class.new( for_class, store, name )
       result = nil
       begin
@@ -69,10 +62,9 @@ module Configh
     
     def self.create(for_class, store, name, values, maintain_history: false, updating:false)
       
-      config_class = CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES[ store.class ]
-      raise(UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless config_class
       raise(ConfigInitError, "Name already in use") if find(for_class, store, name) && !updating
 
+      config_class = ConfigStore.configuration_class( store )
       new_config = config_class.new(for_class, store, name, maintain_history: maintain_history)
       begin
         new_config.reset_values_to(values)
@@ -84,10 +76,8 @@ module Configh
     end
 
     def self.find_all( for_class, store, include_descendants: false, raw: false )
-      
-      configuration_class = CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES[ store.class ]
-      raise( UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless configuration_class
 
+      configuration_class = ConfigStore.configuration_class( store )
       types_to_find = [ for_class ]
       if include_descendants
         stored_classes = configuration_class.get_all_types( store )
@@ -103,9 +93,7 @@ module Configh
 
     def self.max_timestamp( for_class, store )
 
-      configuration_class = CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES[ store.class ]
-      raise( UnsupportedStoreError, "Configuration store must be one of #{ CONFIGURATION_CLASSES_FOR_SUPPORTED_STORES.keys.join(', ')}" ) unless configuration_class
-
+      configuration_class = ConfigStore.configuration_class(store)
       types_to_find = [ for_class ]
       stored_classes = configuration_class.get_all_types( store )
       types_to_find.concat stored_classes.select{ |klass| klass < for_class }
@@ -147,6 +135,7 @@ module Configh
     def update_replace( new_values )
 
       reset_values_to( new_values )
+      @__timestamp = nil
 
       if @__maintain_history
         self.class.create( @__type, @__store, @__name, new_values, maintain_history: @__maintain_history, updating:true )

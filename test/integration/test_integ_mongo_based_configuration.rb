@@ -453,4 +453,33 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
 
   end
 
+  def test_get_config_names_of_types
+    setup_configured_class_with_configured_modules_and_base_classes
+    config_values = { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                      'green' => { 'custom_hue' => 'neon', 'web' => false }}
+    simple_config = nil
+    child_config = nil
+    assert_nothing_raised {
+      simple_config = Simple.create_configuration( @config_store, 'config1', config_values, maintain_history: true )
+      Simple.create_configuration( @config_store, 'config2', config_values, maintain_history: true )
+      Simple.create_configuration( @config_store, 'config3', config_values, maintain_history: true )
+      child_config = Child.create_configuration( @config_store, 'config4', config_values, maintain_history: true )
+      Child.create_configuration( @config_store, 'config5', config_values, maintain_history: true )
+    }
+    ts1 = Simple.max_timestamp( @config_store )
+
+    config_values['simple'].delete 'p2'
+    config_values[ 'simple'][ 'p1' ] = 'goodbye'
+    simple_config.update_replace config_values
+
+    Simple.create_configuration( @config_store, 'config6', config_values, maintain_history: true )
+
+    config_values[ 'simple' ][ 'p1' ] = 'byebye'
+    child_config.update_replace config_values
+
+    expected_result = [[Simple, "config1"], [Simple, "config2"], [Simple, "config3"], [Child, "config4"], [Child, "config5"], [Simple, "config6"]]
+    result = simple_config.class.get_config_names_of_types( @config_store, [ Simple, Child ])
+    assert_equal expected_result, result
+  end
+
 end

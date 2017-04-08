@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+require_relative '../helpers/coverage_helper'
+
 require_relative '../../lib/configh/configuration'
 require_relative '../../lib/configh/configurable'
 
@@ -651,5 +653,6 @@ class TestArrayConfiguration < Test::Unit::TestCase
 
     assert_true [ ts1, ts2, ts3, ts4 ] == [ ts1, ts2, ts3, ts4 ].sort
   end
+
 
 end

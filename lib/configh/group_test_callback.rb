@@ -25,7 +25,7 @@ module Configh
     def initialize( callback_class:, callback_method:, group: nil )
       @callback_class = callback_class
       @callback_method = callback_method.to_sym
-      @group = nil
+      @group = group
       @error = nil
     end 
     

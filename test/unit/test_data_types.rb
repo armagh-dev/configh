@@ -15,7 +15,8 @@
 # limitations under the License.
 #
 
-#require_relative '../../helpers/coverage_helper'
+require_relative '../helpers/coverage_helper'
+
 require 'test/unit'
 require_relative '../../lib/configh/data_types'
 

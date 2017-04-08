@@ -15,7 +15,8 @@
 # limitations under the License.
 #
 
-#require_relative '../../helpers/coverage_helper'
+require_relative '../helpers/coverage_helper'
+
 require_relative '../../lib/configh/configurable'
 require_relative '../../lib/configh/mongo_based_configuration'
 

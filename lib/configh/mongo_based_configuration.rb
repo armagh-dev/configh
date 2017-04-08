@@ -35,7 +35,7 @@ module Configh
          raise ConfigInitError, "Unrecognized type #{h['type']}"
        end
        nat
-      }.uniq
+      }.uniq!
       names_and_types.collect{ |t,n| [ eval(t), n ]}
     end
 
@@ -48,6 +48,14 @@ module Configh
         end
         t
         }
+    end
+
+    def self.each_raw_config( collection, &block )
+      collection.find(nil,{'projection'=>{'_id'=>0}}).each &block
+    end
+
+    def self.load( collection, config )
+      collection.insert_one config
     end
 
     def self.max_timestamp_for_types( collection, types)

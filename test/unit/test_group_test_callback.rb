@@ -15,7 +15,8 @@
 # limitations under the License.
 #
 
-#require_relative '../../helpers/coverage_helper'
+require_relative '../helpers/coverage_helper'
+
 require_relative '../../lib/configh/group_validation_callback'
 
 require 'test/unit'
@@ -42,7 +43,11 @@ class TestGroupTestCallback < Test::Unit::TestCase
     @candidate_config = { 'group1' => { 'imagoboom' => false }}
     @bad_config = { 'group1' => { 'imagoboom' => true }}
   end
-      
+
+  def test_group_set
+    cb = Configh::GroupTestCallback.new( callback_class: CalledBackTestClass, callback_method: :called_back_method, group: 'fred' )
+    assert_equal 'fred', cb.group
+  end
   def test_success
     cb = Configh::GroupTestCallback.new( callback_class: CalledBackTestClass, callback_method: :called_back_method )
     assert_nil cb.test_and_return_error_string( @candidate_config )

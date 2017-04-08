@@ -47,6 +47,14 @@ module Configh
       all_types
     end
 
+    def self.each_raw_config( array, &block )
+      array.each &block
+    end
+
+    def self.load( array, config )
+      array << config
+    end
+
     def self.max_timestamp_for_types(array, types)
       array.collect{ |config| config['timestamp'] if types.include?(config['type']) }.compact.max
     end

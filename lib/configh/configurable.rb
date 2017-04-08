@@ -121,7 +121,7 @@ module Configh
     
       base.define_singleton_method( 'define_group_validation_callback' ) { |args|
         params_hash = base.const_get( configurable_key )[ :params ]
-        group = args[ :group ] || base.name.snakecase
+        group = args[ :group ] || base.name[ /[^\:]*?$/ ].snakecase
         name = args[:name] || args[:callback_method].to_s
         params_hash[ group ] ||= {}
         params_hash[ group ][ name ] = GroupValidationCallback.new( group: group, **args )
@@ -129,7 +129,7 @@ module Configh
       
       base.define_singleton_method( 'define_group_test_callback' ) { |args|
         params_hash = base.const_get( configurable_key )[ :params ]
-        group = args[ :group ] || base.name.snakecase
+        group = args[ :group ] || base.name[ /[^\:]*?$/ ].snakecase
         name = args[:name] || args[:callback_method].to_s
         params_hash[ group ] ||= {}
         params_hash[ group ][ name ] = GroupTestCallback.new( group: group, **args )
