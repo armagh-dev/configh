@@ -99,7 +99,10 @@ module Configh
       end
 
       def edit_configuration( values_hash )
-        Configh::Configuration.validate( self, values_hash )
+        params_hash = {}
+        params_hash['parameters'] = Configh::Configuration.validate( self, values_hash )
+        params_hash[ 'type' ] = self
+        params_hash
       end
 
       def configuration_values_valid?( values_hash )

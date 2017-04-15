@@ -619,9 +619,10 @@ class TestArrayConfiguration < Test::Unit::TestCase
     config_values = { 'simple' => { 'p1' => 'hello', 'p2' => 'oops'},
                       'green' => { 'custom_hue' => 'neon', 'web' => false }}
     edit_info = Simple.edit_configuration( config_values )
-    assert_equal 6, edit_info.length
+    assert_equal 6, edit_info['parameters'].length
+    assert_equal Simple, edit_info['type']
     assert_equal 'type validation failed: value oops cannot be cast as an integer',
-                 edit_info.find{ |p| p['error']}['error']
+                 edit_info['parameters'].find{ |p| p['error']}['error']
   end
 
   def test_max_timestamp
