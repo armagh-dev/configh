@@ -47,8 +47,12 @@ module Configh
       all_types
     end
 
-    def self.each_raw_config( array, &block )
-      array.each &block
+    def self.name_exists?(for_class, array, name)
+      array.index{ |config| config['type'] == for_class.to_s && /^#{name}$/i =~ config['name'] }
+    end
+
+    def self.each_raw_config( array )
+      array.each { |i| yield i }
     end
 
     def self.load( array, config )
@@ -70,11 +74,8 @@ module Configh
     
     def save
     
-#      trying_timestamp = Time.now.utc.round
-        
       trying_config = serialize
- #     trying_config[ 'timestamp' ] = trying_timestamp.to_s
-      
+
       unless @__maintain_history
         @__store.delete_if{ |cfg| cfg[ 'type' ] == @__type.to_s and cfg[ 'name' ] == @__name }
       end

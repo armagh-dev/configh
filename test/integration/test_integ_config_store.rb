@@ -171,6 +171,36 @@ class TestIntegConfigStore < Test::Unit::TestCase
     assert_equal 'Configuration store must be one of Array, Mongo::Collection', e.message
   end
 
+  def test_dup_name
+    setup_configured_class_with_configured_modules_and_base_classes
+    assert_nothing_raised {
+      Simple.create_configuration( @@collection, 'config1',
+                                   { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    }
+    e = assert_raises( Configh::ConfigInitError ) {
+      Simple.create_configuration( @@collection, 'config1',
+                                   { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    }
+    assert_equal 'Name already in use', e.message
+  end
+
+  def test_dup_name_casey
+    setup_configured_class_with_configured_modules_and_base_classes
+    assert_nothing_raised {
+      Simple.create_configuration( @@collection, 'config1',
+                                   { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    }
+    e =  assert_raises( Configh::ConfigInitError ) {
+      Simple.create_configuration( @@collection, 'Config1',
+                                      { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                                        'green' => { 'custom_hue' => 'neon', 'web' => false }})
+    }
+    assert_equal 'Name already in use', e.message
+  end
+
   def test_copy_contents_without_validation_array_to_mongo
     @from_store = []
     @to_store = @@collection
@@ -246,7 +276,7 @@ class TestIntegConfigStore < Test::Unit::TestCase
     @to_store = []
 
     setup_configured_class_with_configured_modules_and_base_classes
-    assert_nothing_raised {
+#    assert_nothing_raised {
       Simple.create_configuration( @from_store, 'config1',
                                    { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
                                      'green' => { 'custom_hue' => 'neon', 'web' => false }})
@@ -262,7 +292,7 @@ class TestIntegConfigStore < Test::Unit::TestCase
       Child.create_configuration( @from_store, 'config5',
                                   { 'simple' => { 'p1' => 'hello5', 'p2' => '42'},
                                     'green' => { 'custom_hue' => 'neon', 'web' => false }})
-    }
+#    }
 
     Configh::ConfigStore.copy_contents_without_validation( @from_store, @to_store )
     config_types_and_names = [ [Simple,'config1'], [Simple,'config2'], [Simple,'config3'], [Child,'config4'], [Child,'config5']]

@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 
+require 'set'
 require_relative 'data_types.rb'
 
 module Configh
@@ -22,9 +23,9 @@ module Configh
   class ParameterDefinitionError < StandardError; end
   
   class Parameter 
-    attr_accessor :name, :description, :type, :required, :default, :prompt, :group, :writable, :warning, :error, :value
+    attr_accessor :name, :description, :type, :required, :default, :options, :prompt, :group, :writable, :warning, :error, :value
   
-    def initialize( name:, description:, type:, required: false, default: nil, prompt: nil, group: nil )
+    def initialize( name:, description:, type:, required: false, default: nil, options: nil, prompt: nil, group: nil )
       
       [ [ 'name',        'populated_string' ],
         [ 'description', 'populated_string' ],
@@ -45,7 +46,30 @@ module Configh
       begin
         @default = DataTypes.ensure_value_is_datatype( default, type, true )
       rescue
-        raise ParameterDefinitionError, "default value is not of correct type"
+        raise ParameterDefinitionError, "Default value #{default} is not a/an #{type}."
+      end
+
+      raise ParameterDefinitionError, "Options when present must be an array." unless options.nil? or options.is_a?(Array)
+      if options
+        begin
+          @options = options.to_set
+          unless @options.length == options.length
+            options = options.sort
+            options.length.times.each do |ix|
+              options[ix] = nil unless options[ix] == options[ix+1]
+            end
+            options.compact!
+            raise ParameterDefinitionError, "Options contains redundant values: #{options.join(",")}."
+          end
+        end
+        @options.collect!{ |option|
+          begin
+            DataTypes.ensure_value_is_datatype( option, type, false )
+          rescue
+            raise ParameterDefinitionError, "Option #{option} is not a/an #{type}."
+          end
+        }
+        raise ParameterDefinitionError, "Default value #{ @default } is not included in the options." if @default && !@options.include?(@default)
       end
       
     end
@@ -61,6 +85,12 @@ module Configh
         value = DataTypes::ensure_value_is_datatype( value, @type, (not @required) )
       rescue DataTypes::TypeError => e
         flagged_parameter.error = "type validation failed: #{e.message}"
+      end
+
+      if @required || (!@required && value)
+        if @options && !@options.include?( value )
+          flagged_parameter.error = "value is not one of the options"
+        end
       end
     
       flagged_parameter.value = value unless flagged_parameter.error

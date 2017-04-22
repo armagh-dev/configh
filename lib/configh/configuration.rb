@@ -59,12 +59,12 @@ module Configh
       end
       result
     end
-    
-    def self.create(for_class, store, name, values, maintain_history: false, updating:false)
-      
-      raise(ConfigInitError, "Name already in use") if find(for_class, store, name) && !updating
+
+     def self.create(for_class, store, name, values, maintain_history: false, updating:false)
 
       config_class = ConfigStore.configuration_class( store )
+      raise(ConfigInitError, "Name already in use") if config_class.name_exists?(for_class, store, name) && !updating
+
       new_config = config_class.new(for_class, store, name, maintain_history: maintain_history)
       begin
         new_config.reset_values_to(values)

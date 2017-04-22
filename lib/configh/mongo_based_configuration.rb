@@ -50,8 +50,13 @@ module Configh
         }
     end
 
-    def self.each_raw_config( collection, &block )
-      collection.find(nil,{'projection'=>{'_id'=>0}}).each &block
+    def self.name_exists?( for_class, collection, name )
+      collection.find( { 'type' => for_class.to_s, 'name' => { '$regex' => /^#{name}$/i }} ).count > 0
+    end
+
+
+    def self.each_raw_config( collection )
+      collection.find(nil,{'projection'=>{'_id'=>0}}).each { |item| yield item}
     end
 
     def self.load( collection, config )

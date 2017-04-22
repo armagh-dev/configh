@@ -161,7 +161,19 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_equal 'Name already in use', e.message
   end
 
-  def test_create_dup_name_maintain_histoyr
+  def test_create_dup_name_casey
+    setup_simple_configured_class
+    assert_nothing_raised {
+      Simple.create_configuration(@config_store, 'simple_inst', {'simple' => {'p1' => 'hello', 'p2' => '42'}})
+    }
+    e =assert_raises( Configh::ConfigInitError ) {
+      Simple.create_configuration(@config_store, 'Simple_Inst', {} )
+    }
+    assert_equal 'Name already in use', e.message
+  end
+
+
+  def test_create_dup_name_maintain_history
     setup_simple_configured_class
     assert_nothing_raised {
       Simple.create_configuration(@config_store, 'simple_inst', {'simple' => {'p1' => 'hello', 'p2' => '42'}}, maintain_history: true)
