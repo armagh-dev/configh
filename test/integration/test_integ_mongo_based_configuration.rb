@@ -482,4 +482,17 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
     assert_equal expected_result, result
   end
 
+  def test_max_timestamps
+    setup_simple_configured_class
+
+    config_values = { 'simple' => { 'p1' => 'hello1', 'p2' => '42'},
+                      'green' => { }}
+
+
+    assert_nil Simple.max_timestamp(@config_store)
+
+    Simple.create_configuration( @config_store, 'config1', config_values, maintain_history: true )
+    assert_in_delta(Time.now.utc,  Time.parse(Simple.max_timestamp(@config_store)), 1)
+  end
+
 end

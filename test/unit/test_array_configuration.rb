@@ -142,6 +142,20 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_nil config
   end
 
+  def test_create_for_simple_class_nonexistent_param
+    setup_simple_configured_class
+    config = nil
+    e = assert_raises( Configh::ConfigInitError.new('Unable to create configuration Simple simple_nonex: simple nuhuh: Configuration provided for parameter that does not exist') ) {
+      config = Simple.create_configuration( @config_store, 'simple_nonex', { 'simple' => { 'p1' => 'hello', 'p2' => 41, 'nuhuh' => false }})
+    }
+
+    e = assert_raises( Configh::ConfigInitError.new('Unable to create configuration Simple simple_nonex: nope nuhuh: Configuration provided for parameter that does not exist') ) {
+      config = Simple.create_configuration( @config_store, 'simple_nonex', { 'simple' => { 'p1' => 'hello', 'p2' => 41 }, 'nope' => { 'nuhuh' => false }
+      })
+    }
+
+  end
+
   def test_create_bad_store_class
     setup_configured_class_with_configured_modules_and_base_classes
     e =assert_raises( Configh::UnsupportedStoreError ) {

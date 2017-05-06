@@ -176,7 +176,20 @@ module Configh
       @__type.defined_parameters.each do |p|
         working_values_hash[ p.group ] ||= {}
         flagged_configurables << p.validate( working_values_hash[ p.group ][ p.name ])
+        working_values_hash[ p.group ].delete p.name
       end
+
+      working_values_hash.each do |group,params|
+        if params.is_a?(Hash)
+          params.each do |name,value|
+             p = Parameter.new( group: group, name: name, type: 'string', description: 'non-existent')
+             p.value = value
+             p.error = 'Configuration provided for parameter that does not exist'
+             flagged_configurables << p
+          end
+        end
+      end
+
       errors   = Parameter.all_errors( flagged_configurables )
       warnings = Parameter.all_warnings( flagged_configurables )
 

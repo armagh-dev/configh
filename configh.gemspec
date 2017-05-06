@@ -50,7 +50,7 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = '~> 2.4'
 
-  spec.add_dependency 'mongo', '~> 2.1'
+  spec.add_dependency 'mongo', '~> 2.4'
   spec.add_dependency 'ice_nine', '~> 0.11'
   spec.add_dependency 'facets', '~> 3.1'
   spec.add_dependency 'hash_diff', '~> 0.8'
