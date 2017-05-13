@@ -17,6 +17,7 @@
 
 require_relative 'configuration'
 
+require 'facets/kernel/deep_copy'
 require 'facets/string/snakecase'
 require 'securerandom'
 
@@ -47,7 +48,7 @@ module Configh
           end
         end
         params = params.collect{ |group,pig| pig.values }.flatten
-        Marshal.load( Marshal.dump( params ))
+        params.deep_copy
       end
     
       def defined_parameters

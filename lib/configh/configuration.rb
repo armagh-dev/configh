@@ -17,6 +17,9 @@
 
 require 'ice_nine'
 require 'hash_diff'
+require 'json'
+require 'facets/kernel/constant'
+require 'facets/kernel/deep_copy'
 
 require_relative './parameter'
 require_relative './group_validation_callback'
@@ -170,7 +173,7 @@ module Configh
     
     def validate( values_hash )
     
-      working_values_hash = Marshal.load( Marshal.dump( values_hash ))  # deep copy required
+      working_values_hash = values_hash.deep_copy  # deep copy required
       flagged_configurables = [] 
       
       @__type.defined_parameters.each do |p|
@@ -219,13 +222,14 @@ module Configh
     end
 
     def serialized_values
-      
+
       s_values = {}
       @__values.each do |grp, params|
-        s_values[ grp ] ||= {}
-        params.each do |k,v|
+        s_values[grp] ||= {}
+        params.each do |k, v|
           unless v.nil?
-            s_values[ grp ][ k ] = v.to_s
+            value = v.is_a?(Enumerable) ? v.to_json : v.to_s
+            s_values[grp][k] = value
           end
         end
       end
@@ -265,16 +269,16 @@ module Configh
 
     def Configuration.unserialize( serialized_config )
       begin
-        type = eval( serialized_config[ 'type' ])
+        type = constant( serialized_config[ 'type' ])
       rescue
-        raise ConfigInitError, "Unrecognized type #{ serialized_values[ 'type' ]}"
+        raise ConfigInitError, "Unrecognized type #{ serialized_config[ 'type' ]}"
       end
 
       unserialized_config = {
         'type'             => type,
         'name'             => serialized_config[ 'name' ],
         'timestamp'        => Time.parse( serialized_config[ 'timestamp']),
-        'maintain_history' => eval(serialized_config[ 'maintain_history' ]),
+        'maintain_history' => JSON.parse(serialized_config[ 'maintain_history' ]),
         'values'           => unserialized_values( type.defined_parameters, serialized_config[ 'values'] )
       }
       
@@ -287,7 +291,7 @@ module Configh
 
     def dup_param_with_value( p )
       
-      dupped = Marshal.load( Marshal.dump ( p ))
+      dupped = p.deep_copy
       dupped.value = @__values[ p.group ][ p.name ]
       dupped
     end

@@ -19,12 +19,22 @@ require_relative '../helpers/coverage_helper'
 
 require 'test/unit'
 require_relative '../../lib/configh/data_types'
+require 'mocha/test_unit'
 
 class WeirdType
-  undef_method :to_s
+  undef :to_s
+end
+
+class VulnerabilityTestObject
+  def bad
+  end
 end
 
 class TestDataTypes < Test::Unit::TestCase
+
+  def setup
+    VulnerabilityTestObject.expects(:bad).never
+  end
   
   def test_ensure_is_integer
     t = Time.now
@@ -164,10 +174,12 @@ class TestDataTypes < Test::Unit::TestCase
   def test_ensure_is_boolean
     assert_equal true, Configh::DataTypes.ensure_is_boolean( true )
     assert_equal false, Configh::DataTypes.ensure_is_boolean( false )
-    e = assert_raise Configh::DataTypes::TypeError do
-      Configh::DataTypes.ensure_is_boolean( nil )
-    end
-    assert_equal "value  is not boolean", e.message
+
+    assert_equal true, Configh::DataTypes.ensure_is_boolean( 'true' )
+    assert_equal false, Configh::DataTypes.ensure_is_boolean( 'false' )
+
+
+    assert_raise(Configh::DataTypes::TypeError.new('value  is not boolean')) {Configh::DataTypes.ensure_is_boolean(nil)}
   end
   
   def test_ensure_is_encoded_string
@@ -195,27 +207,47 @@ class TestDataTypes < Test::Unit::TestCase
     assert_equal %w(a b c d e), Configh::DataTypes.ensure_is_string_array(%w(a b c d e))
     assert_equal %w(1 2 3), Configh::DataTypes.ensure_is_string_array([1,2,3])
     assert_equal %w(a b c d e), Configh::DataTypes.ensure_is_string_array( %w(a b c d e).inspect)
-    assert_raise(Configh::DataTypes::TypeError.new('value {} is not an array of strings')){
-      Configh::DataTypes.ensure_is_string_array({})
+
+
+    assert_raise(Configh::DataTypes::TypeError.new('value 123 is not an array of strings')){
+      Configh::DataTypes.ensure_is_string_array(123)
+    }
+
+    assert_raise(Configh::DataTypes::TypeError.new('value \3 is not an array of strings')){
+      Configh::DataTypes.ensure_is_string_array('\3')
     }
 
     e = assert_raise(Configh::DataTypes::TypeError){
       Configh::DataTypes.ensure_is_string_array([WeirdType.new])
     }
     assert_include(e.message, 'is not an array of elements that could be converted to strings')
+
+    assert_raise(Configh::DataTypes::TypeError.new('value VulnerabilityTestObject.bad is not an array of strings')) {
+      Configh::DataTypes.ensure_is_string_array('VulnerabilityTestObject.bad')
+    }
   end
 
   def test_ensure_is_symbol_array
     assert_equal [:a, :b, :c, :d, :e], Configh::DataTypes.ensure_is_symbol_array(%w(a b c d e))
-    assert_equal [:a, :b, :c, :d, :e], Configh::DataTypes.ensure_is_symbol_array([ :a, :b, :c, :d, :e ].inspect)
-    assert_raise(Configh::DataTypes::TypeError.new('value {} is not an array of symbols')){
-      Configh::DataTypes.ensure_is_symbol_array({})
+    assert_equal [:a, :b, :c, :d, :e], Configh::DataTypes.ensure_is_symbol_array([ :a, :b, :c, :d, :e ])
+    assert_equal [:a, :b, :c, :d, :e], Configh::DataTypes.ensure_is_symbol_array([ :a, :b, :c, :d, :e ].to_json)
+
+    assert_raise(Configh::DataTypes::TypeError.new('value 123 is not an array of symbols')){
+      Configh::DataTypes.ensure_is_symbol_array(123)
+    }
+
+    assert_raise(Configh::DataTypes::TypeError.new('value \3 is not an array of symbols')){
+      Configh::DataTypes.ensure_is_symbol_array('\3')
     }
 
     e = assert_raise(Configh::DataTypes::TypeError){
       Configh::DataTypes.ensure_is_symbol_array([WeirdType.new])
     }
     assert_include(e.message, 'is not an array of elements that could be converted to symbols')
+
+    assert_raise(Configh::DataTypes::TypeError.new('value VulnerabilityTestObject.bad is not an array of symbols')) {
+      Configh::DataTypes.ensure_is_symbol_array('VulnerabilityTestObject.bad')
+    }
   end
   
   def test_ensure_value_is_datatype
@@ -234,6 +266,7 @@ class TestDataTypes < Test::Unit::TestCase
     assert_equal nil, Configh::DataTypes.ensure_value_is_datatype( nil, 'integer', true )
     assert_equal ['one', 'two'], Configh::DataTypes.ensure_value_is_datatype(%w(one two), 'string_array' )
     assert_equal [:one, :two], Configh::DataTypes.ensure_value_is_datatype(%w(one two), 'symbol_array' )
+    assert_equal({'one' => 'two'}, Configh::DataTypes.ensure_value_is_datatype('{"one": "two"}', 'hash'))
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_value_is_datatype( nil, 'integer' )
     end
@@ -241,14 +274,14 @@ class TestDataTypes < Test::Unit::TestCase
   end
   
   def test_ensure_is_hash
-    [ {},
-      { 'a' => 1, 'b' => [1,2,3]},
-      '{}',
-      "{ 'a' => 1, 'b' => [1,2,3]}"
-    ].each do |val|
-      h = val.is_a?( Hash ) ? val : eval(val)
-      assert_equal h, Configh::DataTypes.ensure_value_is_datatype( val, 'hash' )
-    end
+    assert_equal({}, Configh::DataTypes.ensure_is_hash({}))
+    assert_equal({}, Configh::DataTypes.ensure_is_hash({}.to_json))
+    assert_equal({'a' => '1', 'b' => '[1, 2, 3]'}, Configh::DataTypes.ensure_is_hash({'a' => 1, 'b' => [1, 2, 3]}))
+    assert_equal({'a' => '1', 'b' => '[1, 2, 3]'}, Configh::DataTypes.ensure_is_hash({'a' => 1, 'b' => [1, 2, 3]}.to_json))
+
+    assert_raise(Configh::DataTypes::TypeError.new('value VulnerabilityTestObject.bad is not a hash of strings')) {
+      Configh::DataTypes.ensure_is_hash('VulnerabilityTestObject.bad')
+    }
   end
   
   def test_not_supported

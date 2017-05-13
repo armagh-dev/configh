@@ -47,6 +47,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
     klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
     klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
     klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d
+    klass.define_parameter name: 'time', description: 'timestamp', type: 'timestamp', required: false, default: Time.at(0)
     klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus_validate
     klass.define_group_test_callback       callback_class: Bogus, callback_method: :bogus_test
     klass
@@ -375,9 +376,10 @@ class TestArrayConfiguration < Test::Unit::TestCase
     config = nil
     assert_nothing_raised {
       config = Simple.create_configuration( @config_store, 'refreshing',
-                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42'},
+                                            { 'simple' => { 'p1' => 'hello', 'p2' => '42', 'time' => Time.now},
                                               'green' => { 'custom_hue' => 'neon', 'web' => false }})
     }
+
   end
   
   def test_unserialize
@@ -386,7 +388,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
                          'maintain_history'=>'false', 'values'=>{'green'=>{'custom_hue'=>'neon'},
                          'simple'=>{'p1'=>'hello', 'p2'=>'42', 'p3'=>'2017-02-17'}}}
     assert_nothing_raised {
-      Configh::Configuration.unserialize(serialized_config)
+      config = Configh::Configuration.unserialize(serialized_config)
     }
   end
 
@@ -413,7 +415,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
       config = Simple.find_configuration( @config_store, 'finder' )
     }
     found_params = config.find_all_parameters{ |p| p.group == 'simple' }
-    assert_equal [ 'hello', 42, Date.today ], found_params.collect{ |p| p.value }
+    assert_equal [ 'hello', 42, Date.today, Time.at(0) ], found_params.collect{ |p| p.value }
   end 
 
   def test_find_not_found
@@ -447,7 +449,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
       config = Simple.find_or_create_configuration( @config_store, 'finder' )
     }
     found_params = config.find_all_parameters{ |p| p.group == 'simple' }
-    assert_equal [ 'hello', 42, Date.today ], found_params.collect{ |p| p.value }
+    assert_equal [ 'hello', 42, Date.today, Time.at(0) ], found_params.collect{ |p| p.value }
   end 
 
   def test_find_or_create_not_found
@@ -460,7 +462,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
                                                                                       'web' => false }})
     }
     found_params = config.find_all_parameters{ |p| p.group == 'simple' }
-    assert_equal [ 'hello', 42, Date.today ], found_params.collect{ |p| p.value }
+    assert_equal [ 'hello', 42, Date.today, Time.at(0) ], found_params.collect{ |p| p.value }
   end 
   
   def test_find_all
@@ -642,10 +644,10 @@ class TestArrayConfiguration < Test::Unit::TestCase
 
   def test_edit_configuration
     setup_configured_class_with_configured_modules_and_base_classes
-    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => 'oops'},
+    config_values = { 'simple' => { 'p1' => 'hello', 'p2' => 'oops', 'time' => Time.now},
                       'green' => { 'custom_hue' => 'neon', 'web' => false }}
     edit_info = Simple.edit_configuration( config_values )
-    assert_equal 6, edit_info['parameters'].length
+    assert_equal 7, edit_info['parameters'].length
     assert_equal Simple, edit_info['type']
     assert_equal 'type validation failed: value oops cannot be cast as an integer',
                  edit_info['parameters'].find{ |p| p['error']}['error']

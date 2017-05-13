@@ -36,7 +36,7 @@ module Configh
       if nullable
         return nil if (value.nil? or ( value.is_a?(String) and value[/^\s*$/] and datatype_name != "populated_string"))
       else
-        raise TypeError, "value cannot be nil" if value.nil?
+        raise TypeError, 'value cannot be nil' if value.nil?
       end
       raise TypeError, "No such datatype #{ datatype_name }" unless supported?( datatype_name )
       
@@ -88,7 +88,7 @@ module Configh
     
     def self.ensure_is_populated_string( value )
       s = ensure_is_string( value )
-      raise TypeError, "string is empty or nil" unless s[ /[^\s]/]
+      raise TypeError, 'string is empty or nil' unless s[/[^\s]/]
       s
     end
     
@@ -121,11 +121,20 @@ module Configh
     end
   
     def self.ensure_is_boolean( value )
-      if value.is_a?( String ) and [ 'true', 'false' ].include?( value.downcase )
-        value = eval(value)
+      return value if Boolean.bool? value
+
+      bool = nil
+      if value.is_a?(String)
+        down = value.downcase
+        if down == 'true'
+          bool = true
+        elsif down == 'false'
+          bool = false
+        end
       end
-      raise TypeError, "value #{value} is not boolean" unless Boolean.bool?( value ) 
-      value
+
+      raise TypeError, "value #{value} is not boolean" if bool.nil?
+      bool
     end
     
     def self.ensure_is_encoded_string( value )
@@ -138,38 +147,52 @@ module Configh
       sym = nil
       begin
         sym = value.to_sym
-      rescue 
+      rescue
         raise TypeError, "value #{value} cannot be cast as a symbol"
       end
+      sym
     end
     
     def self.ensure_is_hash( value )
-      
-      return value if value.is_a?( Hash )
       begin
-        h = eval( value )
-        return h if h.is_a?( Hash )
-      rescue; end
-      raise TypeError, "value #{value} cannot be cast as a hash"
+        hash = value.is_a?(String) ? JSON.parse(value) : value
+        if hash.is_a? Hash
+          nh = {}
+          hash.each{|k,v| nh[ensure_is_string(k)] = ensure_is_string(v)}
+          return nh
+        end
+      rescue JSON::ParserError
+        raise TypeError, "value #{value} is not a hash of strings"
+      rescue
+        raise TypeError, "value #{value} is not a hash of elements that could be converted to strings"
+      end
+
+      raise TypeError, "value #{value} is not a hash of strings"
     end
 
     def self.ensure_is_string_array(value)
       begin
-        val = (value.is_a?(String)) ? eval(value) : value
-        return val.collect{|i| ensure_is_string(i)} if val.is_a? Array
+        array = value.is_a?(String) ? JSON.parse(value) : value
+        return array.collect{|i| ensure_is_string(i)} if array.is_a? Array
+      rescue JSON::ParserError
+        raise TypeError, "value #{value} is not an array of strings"
       rescue
         raise TypeError, "value #{value} is not an array of elements that could be converted to strings"
       end
+
       raise TypeError, "value #{value} is not an array of strings"
     end
 
     def self.ensure_is_symbol_array(value)
       begin
-        val = (value.is_a?(String)) ? eval(value) : value
-        return val.collect{|i| ensure_is_symbol(i)} if val.is_a? Array
+        array = value.is_a?(String) ? JSON.parse(value) : value
+        return array.collect{|i| ensure_is_symbol(i)} if array.is_a? Array
+      rescue JSON::ParserError
+        raise TypeError, "value #{value} is not an array of symbols"
       rescue
         raise TypeError, "value #{value} is not an array of elements that could be converted to symbols"
       end
+
       raise TypeError, "value #{value} is not an array of symbols"
     end
   end

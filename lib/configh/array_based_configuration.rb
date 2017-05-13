@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 
+require 'facets/kernel/constant'
 require_relative './configuration'
 
 module Configh
@@ -22,25 +23,24 @@ module Configh
   class Configuration; end
     
   class ArrayBasedConfiguration < Configuration
-    
+
     def self.get_config_names_of_types( array, types_to_find )
-     array
-        .collect{ |config| 
-          type = eval(config['type'])
-          [ config[ 'type' ], config[ 'name' ] ] if types_to_find.include? type 
-        }.compact
-        .sort
-        .uniq
-        .collect{ |t,n| [ eval(t), n ]}
+      array = array.collect{ |config|
+          type = constant(config['type'])
+          [ config[ 'type' ], config[ 'name' ] ] if types_to_find.include? type
+      }
+      array.compact!
+      array.sort!
+      array.uniq!
+      array.collect!{ |t,n| [ constant(t), n ]}
+      array
     end
 
     def self.get_all_types( array )
-      all_types = []
       begin
-        all_types = array
-          .collect{ |config| config[ 'type' ]}
-          .uniq
-          .collect{ |tname| eval(tname) }
+        all_types = array.collect{ |config| config[ 'type' ]}
+        all_types.uniq!
+        all_types.collect!{ |tname| constant(tname) }
       rescue
         raise ConfigInitError, "Unrecognized type #{ config[ 'type' ]}"
       end

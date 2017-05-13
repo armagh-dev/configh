@@ -16,6 +16,7 @@
 #
 
 require 'mongo'
+require 'facets/kernel/constant'
 
 require_relative './configuration'
 
@@ -36,13 +37,13 @@ module Configh
        end
        nat
       }.uniq!
-      names_and_types.collect{ |t,n| [ eval(t), n ]}
+      names_and_types.collect{ |t,n| [ constant(t), n ]}
     end
 
     def self.get_all_types( collection )
       collection.distinct( 'type' ).collect{ |k| 
         begin
-          t = eval(k) 
+          t = constant(k)
         rescue
           raise ConfigInitError, "Unrecognized type #{h['type']}"
         end
