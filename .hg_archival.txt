@@ -3,3 +3,4 @@ node: 9e90a8c9dda59e0abc1b0e63babf449390fbf360
 branch: default
 latesttag: 0.5.1.00414
 latesttagdistance: 7
+changessincelatesttag: 8
