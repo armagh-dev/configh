@@ -99,8 +99,12 @@ module Configh
     def to_hash
       Hash[ 
         [ 'name', 'description', 'type', 'required', 'default', 'prompt', 
-          'group', 'warning', 'error', 'value'
-        ].collect{ |pname| [ pname, send( pname.to_sym ) ]}
+          'options', 'group', 'warning', 'error', 'value'
+        ].collect do |pname|
+          pvalue = send( pname.to_sym )
+          pvalue = pvalue.to_a if pvalue && pname == 'options'
+          [ pname, pvalue ]
+        end
       ]
     end
   

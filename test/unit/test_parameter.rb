@@ -247,4 +247,17 @@ class TestParameter < Test::Unit::TestCase
     assert_fails_validation( 'integer', nil, true, nil, 'value is not one of the options', options: [1,2,3])
 
   end
+
+  def test_to_hash_with_options
+    p = Configh::Parameter.new( name: 'method', description: 'http method', required: true, type: 'populated_string', options: %w( get post ))
+    result = p.to_hash
+    assert_equal result[ 'options' ], %w( get post )
+  end
+
+  def test_to_hash_without_options
+    p = Configh::Parameter.new( name: 'method', description: 'http method', required: true, type: 'populated_string' )
+    result = p.to_hash
+    assert_true result.has_key?( 'options' )
+    assert_nil result[ 'options' ]
+  end
  end
