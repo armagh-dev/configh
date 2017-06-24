@@ -45,10 +45,10 @@ module Configh
         begin
           t = constant(k)
         rescue
-          raise ConfigInitError, "Unrecognized type #{h['type']}"
+          raise ConfigInitError, "Unrecognized type #{k}"
         end
         t
-        }
+      }
     end
 
     def self.name_exists?( for_class, collection, name )

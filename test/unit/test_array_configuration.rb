@@ -199,6 +199,13 @@ class TestArrayConfiguration < Test::Unit::TestCase
     assert_equal 'Name already in use', e.message
 
   end
+
+  def test_create_with_non_hash_values
+    setup_simple_configured_class
+    assert_raises( Configh::ConfigInitError.new( 'Values must be a hash' ) ) do
+      Simple.create_configuration( @config_store, 'simple_inst', 'not-a-hash' )
+    end
+  end
    
   def test_create_for_simple_module_good
     setup_simple_configured_module

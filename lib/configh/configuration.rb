@@ -67,6 +67,7 @@ module Configh
 
       config_class = ConfigStore.configuration_class( store )
       raise(ConfigInitError, "Name already in use") if config_class.name_exists?(for_class, store, name) && !updating
+      raise(ConfigInitError, "Values must be a hash" ) unless values.is_a?(Hash)
 
       new_config = config_class.new(for_class, store, name, maintain_history: maintain_history)
       begin
@@ -127,6 +128,8 @@ module Configh
 
     def update_merge( values_to_merge )
 
+      raise ConfigInitError, "Values to merge must be a Hash" unless values_to_merge.is_a?(Hash)
+
       new_values = duplicate_values
       values_to_merge.each do |grp,params|
         new_values[grp] ||= {}
@@ -136,6 +139,8 @@ module Configh
     end
 
     def update_replace( new_values )
+
+      raise ConfigInitError, "New values must be a Hash" unless new_values.is_a?(Hash)
 
       reset_values_to( new_values )
       @__timestamp = nil
