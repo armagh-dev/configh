@@ -20,12 +20,13 @@ module Configh
   class GroupTestCallbackLogicError < StandardError; end
   
   class GroupTestCallback
-    attr_accessor :callback_class, :callback_method, :group, :error
+    attr_accessor :callback_class, :callback_method, :group, :name, :error
     
-    def initialize( callback_class:, callback_method:, group: nil )
+    def initialize( callback_class:, callback_method:, group: nil, name: nil )
       @callback_class = callback_class
       @callback_method = callback_method.to_sym
       @group = group
+      @name  = name
       @error = nil
     end 
     
