@@ -15,7 +15,8 @@
 # limitations under the License.
 #
 
-#require_relative '../../helpers/coverage_helper'
+require_relative '../helpers/coverage_helper'
+require_relative '../helpers/run_helper'
 require_relative '../../lib/configh/configuration'
 require_relative '../../lib/configh/configurable'
 
@@ -29,32 +30,39 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
   class << self
     
     def startup
+      @@startup = true
       begin
         try_start_mongo
         try_connect
         @@collection = @@connection[ 'config' ]
         @@collection.drop
-      rescue
-        puts "unable to start mongo"
-        exit
+      rescue => e
+        $stderr.puts "unable to start mongo: #{e}"
+        @@startup = false
       end
     end
     
     def try_start_mongo
       @@pid = nil
-      psline = `ps -ef | grep mongod | grep -v grep`
-      if psline.empty?
-        puts "trying to start mongod..."
+      mongo_log = '/tmp/test_mongo.out'
+      File.truncate(mongo_log, 0) if File.file? mongo_log
+
+      if RunHelper.program_running? 'mongod'
+        puts 'mongod was running at entry.  will be left running'
+        return
+      else
+        puts 'trying to start mongod...'
         @@pid = spawn 'mongod 1>/dev/null 2>&1'
         sleep 5
-      else 
-        puts "mongod was running at entry.  will be left running"
-        return      
       end
+
       Process.detach @@pid
-      raise if `ps -ef | grep mongod | grep -v grep`.empty?
-      puts "mongod successfully started."
-      
+
+      unless RunHelper.program_running? 'mongod'
+        $stderr.puts File.read(mongo_log)
+        raise
+      end
+      puts 'mongod successfully started.'
     end
   
     def try_connect
@@ -77,7 +85,7 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
   end
   
   def setup
-    
+    assert_true @@startup, 'Failure during test startup'
     @@collection.drop
   
     @config_store = @@collection
@@ -89,7 +97,7 @@ class TestIntegMongoBasedConfiguration < Test::Unit::TestCase
     Object.module_eval "
       %w{ #{@defined_modules_and_classes.join(" ")} }.each do |c|
         remove_const c if const_defined? c
-      end"
+      end" if @defined_modules_and_classes
   end
 
   def setup_simple_configured_class
