@@ -41,18 +41,41 @@ module Configh
         end
         
         params = {}
-        klass_configs.collect{ |h| h[:params]}.each do |h|
-          h.each do |group, pig|
+        undefined_params = {}
+
+        klass_configs.each do |config|
+          p = config[:params]
+          up = config[:undefined_params]
+
+          p.each do |group, pig|
             params[ group ] ||= {}
-            params[ group ].merge! pig 
+            params[ group ].merge! pig
+          end
+
+          up.each do |group, params|
+            undefined_params[ group ] ||= []
+            undefined_params[ group ].concat params
           end
         end
+
+        params.each do |g, p|
+          p_names = p.keys
+          p_names.each do |name|
+            params[g].delete(name) if undefined_params[g]&.include?(name)
+            params.delete(g) if params[g].empty?
+          end
+        end
+
         params = params.collect{ |group,pig| pig.values }.flatten
         params.deep_copy
       end
     
       def defined_parameters
         defined_configurables.find_all{ |p| p.is_a? Parameter }
+      end
+
+      def defined_constants
+        defined_configurables.find_all{ |p| p.is_a? Constant }
       end
     
       def required_parameters
@@ -114,7 +137,7 @@ module Configh
     def self.included(base)
   
       configurable_key = "CONFIGH_PARAMS_#{ SecureRandom.hex(5) }"
-      base.const_set configurable_key, { :klass => base, :params => {}}
+      base.const_set configurable_key, { :klass => base, :params => {}, :undefined_params => {}}
 
       base.define_singleton_method( 'define_parameter' ) { |args|
         params_hash = base.const_get( configurable_key )[ :params ]
@@ -122,7 +145,21 @@ module Configh
         params_hash[ group ] ||= {}
         params_hash[ group ][ args[:name] ] = Parameter.new( group: group, **args )
       }
-    
+
+      base.define_singleton_method( 'define_constant' ) { |args|
+        params_hash = base.const_get( configurable_key )[ :params ]
+        group = args[ :group ] || base.name[ /[^\:]*?$/ ].snakecase
+        params_hash[ group ] ||= {}
+        params_hash[ group ][ args[:name] ] = Constant.new( group: group, **args)
+      }
+
+      base.define_singleton_method('undefine_parameter') { |args|
+        undefined_params_hash = base.const_get( configurable_key )[ :undefined_params ]
+        group = args[ :group ] || base.name[ /[^\:]*?$/ ].snakecase
+        undefined_params_hash[ group ] ||= []
+        undefined_params_hash[ group ] << args[:name]
+      }
+
       base.define_singleton_method( 'define_group_validation_callback' ) { |args|
         params_hash = base.const_get( configurable_key )[ :params ]
         group = args[ :group ] || base.name[ /[^\:]*?$/ ].snakecase
@@ -145,3 +182,4 @@ module Configh
     
   end
 end
+

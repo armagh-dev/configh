@@ -297,4 +297,9 @@ class TestDataTypes < Test::Unit::TestCase
     assert_equal e1, e2
     assert_not_equal e1, e3
   end
+
+  def test_ensure_is_object
+    assert_equal({}, Configh::DataTypes.ensure_is_object({}))
+    assert_equal(123, Configh::DataTypes.ensure_is_object(123))
+  end
 end

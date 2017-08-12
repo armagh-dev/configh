@@ -74,13 +74,17 @@ class TestConfigurable < Test::Unit::TestCase
       klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
       klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
       klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d
+      klass.define_parameter name: 'temp', description: 'this is p3', type: 'string'
       klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus_validate
       klass.define_group_test_callback       callback_class: Bogus, callback_method: :bogus_test
     }
     
-    assert_equal [ 'p1', 'p2', 'p3' ], klass.defined_parameters.collect{ |p| p.name }
+    assert_equal [ 'p1', 'p2', 'p3', 'temp'], klass.defined_parameters.collect{ |p| p.name }
     assert_equal [ 'p1', 'p3' ], klass.required_parameters.collect{ |p,i| p.name }
     assert_equal [ 'p2', 'p3' ], klass.parameters_with_defaults.collect{ |p,i| p.name }
+
+    klass.undefine_parameter name: 'temp'
+    assert_equal [ 'p1', 'p2', 'p3'], klass.defined_parameters.collect{ |p| p.name }
     
     assert_equal Bogus, klass.defined_group_validation_callbacks.first.callback_class
     assert_equal Bogus, klass.defined_group_test_callbacks.first.callback_class
@@ -100,6 +104,7 @@ class TestConfigurable < Test::Unit::TestCase
       mod = new_configurable_module 'Green'
       mod.define_parameter name: 'hue', description: 'shade of green', type: 'string', required: true, default: 'lime'
       mod.define_parameter name: 'rgb', description: 'rgb value', type: 'string', required: false
+      mod.define_parameter name: 'temp', description: 'this is p3', type: 'string'
       mod.define_singleton_method( 'good_green' ) { |candidate_config|
         
         allowed_hues = %w{ lime pea neon olive }
@@ -113,7 +118,7 @@ class TestConfigurable < Test::Unit::TestCase
       
       
       mod_config = mod.create_configuration( @config_store, 'modules1', { 'green' => { 'hue' => 'neon', 'rgb' => '140.140.140' }})
-      
+
       mod = new_configurable_module 'Passthrough'
       mod.include Green
       
@@ -132,8 +137,60 @@ class TestConfigurable < Test::Unit::TestCase
       assert_equal 'hello!', config.simple.p1
       assert_equal 5, config.simple.p2
       assert_equal d, config.simple.p3
-      assert_equal 'olive', config.green.hue     
+      assert_equal 'olive', config.green.hue
     }
+  end
+
+  def test_undefine_parameter_with_module
+    mod = new_configurable_module 'Green'
+    mod.define_parameter name: 'hue', description: 'shade of green', type: 'string', required: true, default: 'lime'
+    mod.define_parameter name: 'rgb', description: 'rgb value', type: 'string', required: false
+    mod.define_parameter name: 'temp', description: 'this is temporary', type: 'string'
+
+    klass1 = new_configurable_class 'Uno'
+    klass1.include Green
+    klass1.define_parameter name: 'one', description: 'first', type: 'boolean', required: true, default: true
+    klass1.undefine_parameter name: 'temp', group: 'green'
+
+    klass2 = new_configurable_class 'Dos'
+    klass2.include Green
+    klass2.define_parameter name: 'two', description: 'second', type: 'boolean', required: true, default: true
+
+    klass3 = new_configurable_class 'None'
+    klass3.include Green
+    klass3.undefine_parameter name: 'hue', group: 'green'
+    klass3.undefine_parameter name: 'rgb', group: 'green'
+    klass3.undefine_parameter name: 'temp', group: 'green'
+
+    assert_equal %w(hue rgb temp), mod.defined_parameters.collect{ |p| p.name }
+    assert_equal %w(hue rgb one), klass1.defined_parameters.collect{ |p| p.name }
+    assert_equal %w(hue rgb temp two), klass2.defined_parameters.collect{ |p| p.name }
+
+    assert_empty klass3.defined_parameters
+    assert_empty klass3.required_parameters
+  end
+
+  def test_constant
+    mod = new_configurable_module 'Green'
+    mod.define_constant name: 'const', value: 'lime'
+    mod.define_parameter name: 'one', description: 'first', type: 'boolean', required: true, default: true
+    mod.define_parameter name: 'overwrite', description: 'first', type: 'boolean', required: true, default: true
+
+    klass1 = new_configurable_class 'Uno'
+    klass1.define_constant name: 'overwrite', value: 'eggs', group: 'green'
+    klass1.define_parameter name: 'new', description: 'something', type: 'string', required: true, default: 'howdy'
+    klass1.define_constant name: 'nil', value: nil
+    klass1.include Green
+
+    config = klass1.create_configuration( @config_store, 'simple', {})
+
+    assert_equal('lime', config.green.const)
+    assert_equal('eggs', config.green.overwrite)
+    assert_equal('howdy', config.uno.new)
+    assert_nil config.uno.nil
+    assert_true config.green.one
+
+    assert_equal(%w(one new), klass1.defined_parameters.collect{ |p| p.name})
   end
   
   def test_class_with_inheritance

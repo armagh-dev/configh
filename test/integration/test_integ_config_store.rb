@@ -105,6 +105,7 @@ class TestIntegConfigStore < Test::Unit::TestCase
     klass.define_parameter name: 'p1', description: 'this is p1', type: 'string', required: true
     klass.define_parameter name: 'p2', description: 'this is p2', type: 'integer', required: false, default: 4
     klass.define_parameter name: 'p3', description: 'this is p3', type: 'date', required: true, default: d
+    klass.define_constant name: 'const', value: 'class_value'
     klass.define_group_validation_callback callback_class: Bogus, callback_method: :bogus_validate
     klass.define_group_test_callback       callback_class: Bogus, callback_method: :bogus_test
     klass
@@ -116,6 +117,7 @@ class TestIntegConfigStore < Test::Unit::TestCase
     mod.define_parameter name: 'custom_hue', description: 'shade of green', type: 'string', required: false, default: 'lime'
     mod.define_parameter name: 'rgb', description: 'rgb value', type: 'string', required: false
     mod.define_parameter name: 'web', description: 'web standard color', type: 'boolean', required:true
+    mod.define_constant name: 'const', value: 'mod_value'
     mod.define_singleton_method('good_green') { |candidate_config|
       error = nil
       if candidate_config.green.web
@@ -238,6 +240,10 @@ class TestIntegConfigStore < Test::Unit::TestCase
       assert_equal from_config.__values, to_config.__values
       assert_equal from_config.__timestamp, to_config.__timestamp
       assert_equal from_config.__maintain_history, to_config.__maintain_history
+      assert_nil from_config.__values.dig('green', 'const')
+      assert_nil to_config.__values.dig('green', 'const')
+      assert_nil from_config.__values.dig('simple', 'const')
+      assert_nil to_config.__values.dig('simple', 'const')
     end
   end
 
@@ -274,6 +280,10 @@ class TestIntegConfigStore < Test::Unit::TestCase
       assert_equal from_config.__values, to_config.__values
       assert_equal from_config.__timestamp, to_config.__timestamp
       assert_equal from_config.__maintain_history, to_config.__maintain_history
+      assert_nil from_config.__values.dig('green', 'const')
+      assert_nil to_config.__values.dig('green', 'const')
+      assert_nil from_config.__values.dig('simple', 'const')
+      assert_nil to_config.__values.dig('simple', 'const')
     end
   end
 
@@ -308,6 +318,10 @@ class TestIntegConfigStore < Test::Unit::TestCase
       assert_equal from_config.__values, to_config.__values
       assert_equal from_config.__timestamp, to_config.__timestamp
       assert_equal from_config.__maintain_history, to_config.__maintain_history
+      assert_nil from_config.__values.dig('green', 'const')
+      assert_nil to_config.__values.dig('green', 'const')
+      assert_nil from_config.__values.dig('simple', 'const')
+      assert_nil to_config.__values.dig('simple', 'const')
     end
   end
 
@@ -344,6 +358,10 @@ class TestIntegConfigStore < Test::Unit::TestCase
       assert_equal from_config.__values, to_config.__values
       assert_equal from_config.__timestamp, to_config.__timestamp
       assert_equal from_config.__maintain_history, to_config.__maintain_history
+      assert_nil from_config.__values.dig('green', 'const')
+      assert_nil to_config.__values.dig('green', 'const')
+      assert_nil from_config.__values.dig('simple', 'const')
+      assert_nil to_config.__values.dig('simple', 'const')
     end
   end
 end

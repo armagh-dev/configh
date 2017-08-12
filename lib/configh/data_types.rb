@@ -25,7 +25,7 @@ module Configh
     
     class TypeError < ::TypeError; end
 
-    SUPPORTED_TYPES = %w{ integer non_negative_integer positive_integer string populated_string date timestamp boolean encoded_string symbol hash string_array symbol_array }
+    SUPPORTED_TYPES = %w{ integer non_negative_integer positive_integer string populated_string date timestamp boolean encoded_string symbol hash string_array symbol_array object }
     
     def self.supported?( datatype_name )
       SUPPORTED_TYPES.include?( datatype_name ) || self.respond_to?( "ensure_is_#{datatype_name}".to_sym )
@@ -194,6 +194,10 @@ module Configh
       end
 
       raise TypeError, "value #{value} is not an array of symbols"
+    end
+
+    def self.ensure_is_object(value)
+      return value
     end
   end
 end

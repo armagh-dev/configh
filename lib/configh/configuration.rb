@@ -21,6 +21,7 @@ require 'json'
 require 'facets/kernel/constant'
 require 'facets/kernel/deep_copy'
 
+require_relative './constant'
 require_relative './parameter'
 require_relative './group_validation_callback'
 require_relative './group_test_callback'
@@ -173,7 +174,15 @@ module Configh
         subobj.singleton_class.class_eval { attr_reader p.name.to_sym }
         subobj.singleton_class.class_eval { attr_reader p.name.to_sym }
         subobj.instance_variable_set "@#{p.name}", @__values[ p.group ][ p.name ]
-      end    
+      end
+
+      @__type.defined_constants.each do |c|
+        singleton_class.class_eval { attr_reader c.group.to_sym }
+        subobj = instance_variable_get("@#{c.group}" ) || instance_variable_set( "@#{c.group}", Object.new )
+        subobj.singleton_class.class_eval { attr_reader c.name.to_sym }
+        subobj.singleton_class.class_eval { attr_reader c.name.to_sym }
+        subobj.instance_variable_set "@#{c.name}", c.value
+      end
     end
     
     def validate( values_hash )
