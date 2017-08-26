@@ -75,7 +75,7 @@ module Configh
         new_config.reset_values_to(values)
         new_config.save
       rescue ConfigValidationError => e
-        raise ConfigInitError, "Unable to create configuration #{for_class.name} #{name}: #{ e.message }"
+        raise ConfigInitError, "Unable to create configuration for '#{for_class.name}' named '#{name}' because: #{ e.message }"
       end     
       new_config
     end
@@ -159,7 +159,7 @@ module Configh
       
       unless bypass_validation
         _flagged_parameters, validated_values_hash, errors, _warnings = validate( candidate_values_hash )
-        raise ConfigValidationError, errors.join(",") if errors.any?
+        raise ConfigValidationError, "\n    " + errors.join("\n    ") if errors.any?
       end
       
       @__values.each do | grp, _sub |

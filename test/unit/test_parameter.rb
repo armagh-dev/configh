@@ -183,18 +183,18 @@ class TestParameter < Test::Unit::TestCase
     assert_successful_validation( 'integer', nil, true, 4, 4 )
     assert_successful_validation( 'integer', nil, true, t, t.to_i)
     assert_fails_validation( 'integer', nil, true, nil, "type validation failed: value cannot be nil")
-    assert_fails_validation( 'integer', nil, false, 'X', "type validation failed: value X cannot be cast as an integer")
+    assert_fails_validation( 'integer', nil, false, 'X', "type validation failed: value 'X' cannot be cast as an integer")
  
     assert_successful_validation( 'non_negative_integer', nil, false, 0, 0 )
     assert_successful_validation( 'non_negative_integer', '0', false, nil, 0 )
     assert_successful_validation( 'non_negative_integer', nil, true, '0', 0 )
-    assert_fails_validation( 'non_negative_integer', '0', true, 'x', 'type validation failed: value x cannot be cast as an integer')
-    assert_fails_validation( 'non_negative_integer', nil, true, -134, 'type validation failed: value -134 is negative')
+    assert_fails_validation( 'non_negative_integer', '0', true, 'x', "type validation failed: value 'x' cannot be cast as an integer")
+    assert_fails_validation( 'non_negative_integer', nil, true, -134, "type validation failed: value '-134' is negative")
 
     assert_successful_validation( 'positive_integer', nil, true, 42, 42 )
     assert_successful_validation( 'positive_integer', nil, true, '42', 42 )
-    assert_fails_validation( 'positive_integer', nil, true, 'x', 'type validation failed: value x cannot be cast as an integer' )
-    assert_fails_validation( 'positive_integer', nil, false, 0, 'type validation failed: value 0 is non-positive')
+    assert_fails_validation( 'positive_integer', nil, true, 'x', "type validation failed: value 'x' cannot be cast as an integer" )
+    assert_fails_validation( 'positive_integer', nil, false, 0, "type validation failed: value '0' is non-positive")
     
     assert_successful_validation( 'populated_string', nil, true, 'hi', 'hi' )
     assert_fails_validation( 'populated_string', nil, true, '', 'type validation failed: string is empty or nil')
@@ -203,18 +203,18 @@ class TestParameter < Test::Unit::TestCase
     assert_successful_validation( 'date', nil, false, nil, nil )
     assert_successful_validation( 'date', nil, true, d, d )
     assert_successful_validation( 'date', nil, true, t, d )
-    assert_fails_validation( 'date', nil, true, '2016-10-40', 'type validation failed: value 2016-10-40 cannot be cast as a date')
+    assert_fails_validation( 'date', nil, true, '2016-10-40', "type validation failed: value '2016-10-40' cannot be cast as a date")
         
     assert_successful_validation( 'timestamp', nil, true, t.strftime( "%Y-%m-%d %H:%M:%S %z" ), t)
     assert_successful_validation( 'timestamp', nil, true, t.strftime( "%a, %d %b %Y %H:%M:%S %z"), t )
-    assert_fails_validation( 'timestamp', nil, true, d, "type validation failed: value #{ d.strftime( "%Y-%m-%d" )} cannot be cast as a timestamp")
-    assert_fails_validation( 'timestamp', nil, true, "2016-10-05 25:60:00 GMT", "type validation failed: value 2016-10-05 25:60:00 GMT cannot be cast as a timestamp")
+    assert_fails_validation( 'timestamp', nil, true, d, "type validation failed: value '#{ d.strftime( "%Y-%m-%d" )}' cannot be cast as a timestamp")
+    assert_fails_validation( 'timestamp', nil, true, "2016-10-05 25:60:00 GMT", "type validation failed: value '2016-10-05 25:60:00 GMT' cannot be cast as a timestamp")
     
     assert_successful_validation( 'boolean', true, true, nil, true )
     assert_successful_validation( 'boolean', false, true, nil, false )
     assert_successful_validation( 'boolean', nil, true, false, false)
     assert_successful_validation( 'boolean', nil, false, nil, nil )
-    assert_fails_validation( 'boolean', nil, false, 'x', 'type validation failed: value x is not boolean')
+    assert_fails_validation( 'boolean', nil, false, 'x', "type validation failed: value 'x' is not boolean")
     
     assert_successful_validation( 'encoded_string', nil, true, es, es )
     assert_successful_validation( 'encoded_string', nil, true, es.to_s, es)
@@ -229,8 +229,8 @@ class TestParameter < Test::Unit::TestCase
     p2v = p2.validate( 'x' )
     p3 = Configh::Parameter.new( name: 'p3', description: 'p3', required: true, type: 'date' )
     p3v = p3.validate( Date.today )
-    assert_equal [ "p1: type validation failed: string is empty or nil",
-                   "subset p2: type validation failed: value x cannot be cast as an integer" 
+    assert_equal [ "Parameter 'p1': type validation failed: string is empty or nil",
+                   "Group 'subset' Parameter 'p2': type validation failed: value 'x' cannot be cast as an integer" 
                   ], Configh::Parameter.all_errors( [ p1v, p2v, p3v ])
   end
 

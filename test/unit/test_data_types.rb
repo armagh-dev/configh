@@ -43,12 +43,12 @@ class TestDataTypes < Test::Unit::TestCase
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_integer( '42 is the answer' )
     end
-    assert_equal "value 42 is the answer cannot be cast as an integer", e.message
+    assert_equal "value '42 is the answer' cannot be cast as an integer", e.message
     assert_equal t.to_i, Configh::DataTypes.ensure_is_integer( Time.now )
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_integer( nil )
     end
-    assert_equal "value  cannot be cast as an integer", e.message
+    assert_equal "value '' cannot be cast as an integer", e.message
   end
     
   def test_ensure_is_non_negative_integer
@@ -60,19 +60,19 @@ class TestDataTypes < Test::Unit::TestCase
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_non_negative_integer('-42')
     end
-    assert_equal "value -42 is negative", e.message
+    assert_equal "value '-42' is negative", e.message
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_non_negative_integer( '42 is the answer')
     end
-    assert_equal "value 42 is the answer cannot be cast as an integer", e.message
+    assert_equal "value '42 is the answer' cannot be cast as an integer", e.message
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_non_negative_integer( -20 )
     end
-    assert_equal "value -20 is negative", e.message
+    assert_equal "value '-20' is negative", e.message
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_non_negative_integer( nil )
     end
-    assert_equal "value  cannot be cast as an integer", e.message
+    assert_equal "value '' cannot be cast as an integer", e.message
   end
   
   def test_ensure_is_positive_integer
@@ -83,23 +83,23 @@ class TestDataTypes < Test::Unit::TestCase
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_positive_integer( 0 )
     end
-    assert_equal "value 0 is non-positive", e.message
+    assert_equal "value '0' is non-positive", e.message
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_positive_integer('-42')
     end
-    assert_equal "value -42 is non-positive", e.message
+    assert_equal "value '-42' is non-positive", e.message
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_positive_integer( '42 is the answer')
     end
-    assert_equal "value 42 is the answer cannot be cast as an integer", e.message
+    assert_equal "value '42 is the answer' cannot be cast as an integer", e.message
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_positive_integer( -20 )
     end
-    assert_equal "value -20 is non-positive", e.message
+    assert_equal "value '-20' is non-positive", e.message
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_positive_integer( nil )
     end
-    assert_equal "value  cannot be cast as an integer", e.message
+    assert_equal "value '' cannot be cast as an integer", e.message
   end
  
   def test_ensure_is_string
@@ -149,11 +149,11 @@ class TestDataTypes < Test::Unit::TestCase
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_date( "I'm not a date" )
     end
-    assert_equal "value I'm not a date cannot be cast as a date", e.message
+    assert_equal "value 'I'm not a date' cannot be cast as a date", e.message
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_date( 4 )
     end
-    assert_equal "value 4 cannot be cast as a date", e.message
+    assert_equal "value '4' cannot be cast as a date", e.message
   end
 
   def test_ensure_is_timestamp
@@ -164,11 +164,11 @@ class TestDataTypes < Test::Unit::TestCase
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_timestamp( "I'm not a timestamp" )
     end
-    assert_equal "value I'm not a timestamp cannot be cast as a timestamp", e.message
+    assert_equal "value 'I'm not a timestamp' cannot be cast as a timestamp", e.message
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_date( 4 )
     end
-    assert_equal "value 4 cannot be cast as a date", e.message
+    assert_equal "value '4' cannot be cast as a date", e.message
   end
 
   def test_ensure_is_boolean
@@ -179,7 +179,7 @@ class TestDataTypes < Test::Unit::TestCase
     assert_equal false, Configh::DataTypes.ensure_is_boolean( 'false' )
 
 
-    assert_raise(Configh::DataTypes::TypeError.new('value  is not boolean')) {Configh::DataTypes.ensure_is_boolean(nil)}
+    assert_raise(Configh::DataTypes::TypeError.new("value '' is not boolean")) {Configh::DataTypes.ensure_is_boolean(nil)}
   end
   
   def test_ensure_is_encoded_string
@@ -196,11 +196,11 @@ class TestDataTypes < Test::Unit::TestCase
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_symbol 4
     end
-    assert_equal "value 4 cannot be cast as a symbol", e.message
+    assert_equal "value '4' cannot be cast as a symbol", e.message
     e = assert_raise Configh::DataTypes::TypeError do
       Configh::DataTypes.ensure_is_symbol nil
     end
-    assert_equal "value  cannot be cast as a symbol", e.message
+    assert_equal "value '' cannot be cast as a symbol", e.message
   end
 
   def test_ensure_is_string_array
@@ -209,11 +209,11 @@ class TestDataTypes < Test::Unit::TestCase
     assert_equal %w(a b c d e), Configh::DataTypes.ensure_is_string_array( %w(a b c d e).inspect)
 
 
-    assert_raise(Configh::DataTypes::TypeError.new('value 123 is not an array of strings')){
+    assert_raise(Configh::DataTypes::TypeError.new("value '123' is not an array of strings")){
       Configh::DataTypes.ensure_is_string_array(123)
     }
 
-    assert_raise(Configh::DataTypes::TypeError.new('value \3 is not an array of strings')){
+    assert_raise(Configh::DataTypes::TypeError.new("value '\\3' is not an array of strings")){
       Configh::DataTypes.ensure_is_string_array('\3')
     }
 
@@ -222,7 +222,7 @@ class TestDataTypes < Test::Unit::TestCase
     }
     assert_include(e.message, 'is not an array of elements that could be converted to strings')
 
-    assert_raise(Configh::DataTypes::TypeError.new('value VulnerabilityTestObject.bad is not an array of strings')) {
+    assert_raise(Configh::DataTypes::TypeError.new("value 'VulnerabilityTestObject.bad' is not an array of strings")) {
       Configh::DataTypes.ensure_is_string_array('VulnerabilityTestObject.bad')
     }
   end
@@ -232,11 +232,11 @@ class TestDataTypes < Test::Unit::TestCase
     assert_equal [:a, :b, :c, :d, :e], Configh::DataTypes.ensure_is_symbol_array([ :a, :b, :c, :d, :e ])
     assert_equal [:a, :b, :c, :d, :e], Configh::DataTypes.ensure_is_symbol_array([ :a, :b, :c, :d, :e ].to_json)
 
-    assert_raise(Configh::DataTypes::TypeError.new('value 123 is not an array of symbols')){
+    assert_raise(Configh::DataTypes::TypeError.new("value '123' is not an array of symbols")){
       Configh::DataTypes.ensure_is_symbol_array(123)
     }
 
-    assert_raise(Configh::DataTypes::TypeError.new('value \3 is not an array of symbols')){
+    assert_raise(Configh::DataTypes::TypeError.new("value '\\3' is not an array of symbols")){
       Configh::DataTypes.ensure_is_symbol_array('\3')
     }
 
@@ -245,7 +245,7 @@ class TestDataTypes < Test::Unit::TestCase
     }
     assert_include(e.message, 'is not an array of elements that could be converted to symbols')
 
-    assert_raise(Configh::DataTypes::TypeError.new('value VulnerabilityTestObject.bad is not an array of symbols')) {
+    assert_raise(Configh::DataTypes::TypeError.new("value 'VulnerabilityTestObject.bad' is not an array of symbols")) {
       Configh::DataTypes.ensure_is_symbol_array('VulnerabilityTestObject.bad')
     }
   end
@@ -279,7 +279,7 @@ class TestDataTypes < Test::Unit::TestCase
     assert_equal({'a' => '1', 'b' => '[1, 2, 3]'}, Configh::DataTypes.ensure_is_hash({'a' => 1, 'b' => [1, 2, 3]}))
     assert_equal({'a' => '1', 'b' => '[1, 2, 3]'}, Configh::DataTypes.ensure_is_hash({'a' => 1, 'b' => [1, 2, 3]}.to_json))
 
-    assert_raise(Configh::DataTypes::TypeError.new('value VulnerabilityTestObject.bad is not a hash of strings')) {
+    assert_raise(Configh::DataTypes::TypeError.new("value 'VulnerabilityTestObject.bad' is not a hash of strings")) {
       Configh::DataTypes.ensure_is_hash('VulnerabilityTestObject.bad')
     }
   end

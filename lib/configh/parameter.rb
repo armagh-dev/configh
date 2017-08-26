@@ -109,11 +109,11 @@ module Configh
     end
   
     def self.all_errors( parameter_array )
-      parameter_array.collect{ |p| "#{[ p.group, p.name ].compact.join(' ')}: #{ p.error }" if p.error }.compact
+      parameter_array.collect{ |p| [ p.group ? "Group '#{p.group}'" : nil, p.name ? "Parameter '#{p.name}'" : nil ].compact.join(' ') + ": #{p.error}" if p.error }.compact
     end
   
     def self.all_warnings( parameter_array )
-      parameter_array.collect{ |p| "#{[ p.group, p.name ].compact.join(' ')}: #{ p.warning }" if p.warning }.compact
+      parameter_array.collect{ |p| [ p.group ? "Group '#{p.group}'" : nil, p.name ? "Parameter '#{p.name}'" : nil ].compact.join(' ') + ": #{p.warning}" if p.warning }.compact
     end
   
     def self.to_values_hash( parameter_array )

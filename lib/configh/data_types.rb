@@ -51,20 +51,20 @@ module Configh
       begin
         d = Integer( value )
       rescue => e
-        raise TypeError, "value #{value} cannot be cast as an integer"
+        raise TypeError, "value '#{value}' cannot be cast as an integer"
       end
       d
     end
   
     def self.ensure_is_non_negative_integer( value )
       d = ensure_is_integer( value )
-      raise TypeError, "value #{ d } is negative" if d < 0
+      raise TypeError, "value '#{d}' is negative" if d < 0
       d
     end
   
     def self.ensure_is_positive_integer( value )
       d = ensure_is_integer( value )
-      raise TypeError, "value #{d} is non-positive" if d <= 0
+      raise TypeError, "value '#{d}' is non-positive" if d <= 0
       d
     end
   
@@ -73,7 +73,7 @@ module Configh
         s = String( value )
         if s.frozen?
           unless s.encoding.to_s == 'UTF-8'
-            raise TypeError, "value #{value} is frozen in encoding other than UTF-8"
+            raise TypeError, "value '#{value}' is frozen in encoding other than UTF-8"
           end
         else
           unless s.encoding.to_s == 'UTF-8'
@@ -81,7 +81,7 @@ module Configh
           end
         end
       rescue
-        raise TypeError, "value #{value} cannot be cast as a string"
+        raise TypeError, "value '#{value}' cannot be cast as a string"
       end
       s
     end
@@ -102,7 +102,7 @@ module Configh
         begin
           dt = Date.strptime( value, "%m/%d/%Y" )
         rescue
-          raise TypeError, "value #{ value } cannot be cast as a date"
+          raise TypeError, "value '#{value}' cannot be cast as a date"
         end
       end
       dt
@@ -114,7 +114,7 @@ module Configh
         begin
           ts = Time.parse( value )
         rescue
-          raise TypeError, "value #{value} cannot be cast as a timestamp"
+          raise TypeError, "value '#{value}' cannot be cast as a timestamp"
         end
       end
       ts
@@ -133,13 +133,13 @@ module Configh
         end
       end
 
-      raise TypeError, "value #{value} is not boolean" if bool.nil?
+      raise TypeError, "value '#{value}' is not boolean" if bool.nil?
       bool
     end
     
     def self.ensure_is_encoded_string( value )
       value = EncodedString.from_encoded( value ) if value.is_a?( String )
-      raise TypeError, "value #{value} is not an encoded string" unless value.is_a?( EncodedString )
+      raise TypeError, "value '#{value}' is not an encoded string" unless value.is_a?( EncodedString )
       value
     end
     
@@ -148,7 +148,7 @@ module Configh
       begin
         sym = value.to_sym
       rescue
-        raise TypeError, "value #{value} cannot be cast as a symbol"
+        raise TypeError, "value '#{value}' cannot be cast as a symbol"
       end
       sym
     end
@@ -162,12 +162,12 @@ module Configh
           return nh
         end
       rescue JSON::ParserError
-        raise TypeError, "value #{value} is not a hash of strings"
+        raise TypeError, "value '#{value}' is not a hash of strings"
       rescue
-        raise TypeError, "value #{value} is not a hash of elements that could be converted to strings"
+        raise TypeError, "value '#{value}' is not a hash of elements that could be converted to strings"
       end
 
-      raise TypeError, "value #{value} is not a hash of strings"
+      raise TypeError, "value '#{value}' is not a hash of strings"
     end
 
     def self.ensure_is_string_array(value)
@@ -175,12 +175,12 @@ module Configh
         array = value.is_a?(String) ? JSON.parse(value) : value
         return array.collect{|i| ensure_is_string(i)} if array.is_a? Array
       rescue JSON::ParserError
-        raise TypeError, "value #{value} is not an array of strings"
+        raise TypeError, "value '#{value}' is not an array of strings"
       rescue
-        raise TypeError, "value #{value} is not an array of elements that could be converted to strings"
+        raise TypeError, "value '#{value}' is not an array of elements that could be converted to strings"
       end
 
-      raise TypeError, "value #{value} is not an array of strings"
+      raise TypeError, "value '#{value}' is not an array of strings"
     end
 
     def self.ensure_is_symbol_array(value)
@@ -188,12 +188,12 @@ module Configh
         array = value.is_a?(String) ? JSON.parse(value) : value
         return array.collect{|i| ensure_is_symbol(i)} if array.is_a? Array
       rescue JSON::ParserError
-        raise TypeError, "value #{value} is not an array of symbols"
+        raise TypeError, "value '#{value}' is not an array of symbols"
       rescue
-        raise TypeError, "value #{value} is not an array of elements that could be converted to symbols"
+        raise TypeError, "value '#{value}' is not an array of elements that could be converted to symbols"
       end
 
-      raise TypeError, "value #{value} is not an array of symbols"
+      raise TypeError, "value '#{value}' is not an array of symbols"
     end
 
     def self.ensure_is_object(value)

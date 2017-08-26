@@ -129,7 +129,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
     e = assert_raises( Configh::ConfigInitError ) {
       config = Simple.create_configuration( @config_store, 'simple_bad', { 'simple' => { 'p1' => 'hello', 'p2' => 'x'}})
     }
-    assert_equal 'Unable to create configuration Simple simple_bad: simple p2: type validation failed: value x cannot be cast as an integer', e.message
+    assert_equal "Unable to create configuration for 'Simple' named 'simple_bad' because: \n    Group 'simple' Parameter 'p2': type validation failed: value 'x' cannot be cast as an integer", e.message
     assert_nil config
   end
 
@@ -139,18 +139,18 @@ class TestArrayConfiguration < Test::Unit::TestCase
     e = assert_raises( Configh::ConfigInitError ) {
       config = Simple.create_configuration( @config_store, 'simple_missing', { 'simple' => { 'p2' => 41 }})
     }
-    assert_equal 'Unable to create configuration Simple simple_missing: simple p1: type validation failed: value cannot be nil', e.message
+    assert_equal "Unable to create configuration for 'Simple' named 'simple_missing' because: \n    Group 'simple' Parameter 'p1': type validation failed: value cannot be nil", e.message
     assert_nil config
   end
 
   def test_create_for_simple_class_nonexistent_param
     setup_simple_configured_class
     config = nil
-    e = assert_raises( Configh::ConfigInitError.new('Unable to create configuration Simple simple_nonex: simple nuhuh: Configuration provided for parameter that does not exist') ) {
+    e = assert_raises( Configh::ConfigInitError.new("Unable to create configuration for 'Simple' named 'simple_nonex' because: \n    Group 'simple' Parameter 'nuhuh': Configuration provided for parameter that does not exist") ) {
       config = Simple.create_configuration( @config_store, 'simple_nonex', { 'simple' => { 'p1' => 'hello', 'p2' => 41, 'nuhuh' => false }})
     }
 
-    e = assert_raises( Configh::ConfigInitError.new('Unable to create configuration Simple simple_nonex: nope nuhuh: Configuration provided for parameter that does not exist') ) {
+    e = assert_raises( Configh::ConfigInitError.new("Unable to create configuration for 'Simple' named 'simple_nonex' because: \n    Group 'nope' Parameter 'nuhuh': Configuration provided for parameter that does not exist") ) {
       config = Simple.create_configuration( @config_store, 'simple_nonex', { 'simple' => { 'p1' => 'hello', 'p2' => 41 }, 'nope' => { 'nuhuh' => false }
       })
     }
@@ -296,7 +296,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
     e = assert_raises( Configh::ConfigValidationError ) do
       config.update_merge( { 'simple' => { 'p2' => 'oops' }})
     end
-    assert_equal 'simple p2: type validation failed: value oops cannot be cast as an integer', e.message
+    assert_equal "\n    Group 'simple' Parameter 'p2': type validation failed: value 'oops' cannot be cast as an integer", e.message
 
     assert_equal 'hello', config.simple.p1
 
@@ -656,7 +656,7 @@ class TestArrayConfiguration < Test::Unit::TestCase
     edit_info = Simple.edit_configuration( config_values )
     assert_equal 7, edit_info['parameters'].length
     assert_equal Simple, edit_info['type']
-    assert_equal 'type validation failed: value oops cannot be cast as an integer',
+    assert_equal "type validation failed: value 'oops' cannot be cast as an integer",
                  edit_info['parameters'].find{ |p| p['error']}['error']
   end
 
