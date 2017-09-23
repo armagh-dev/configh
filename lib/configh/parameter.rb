@@ -88,7 +88,7 @@ module Configh
 
       if @required || (!@required && value)
         if @options && !@options.include?( value )
-          flagged_parameter.error = "value is not one of the options"
+          flagged_parameter.error = "value is not one of the options (#{@options.to_a.join(',')})"
         end
       end
     

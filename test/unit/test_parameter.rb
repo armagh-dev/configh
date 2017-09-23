@@ -242,9 +242,9 @@ class TestParameter < Test::Unit::TestCase
     assert_successful_validation( 'integer', '1', false, nil, 1, options: [1,2,3])
     assert_successful_validation( 'integer', 1, true, nil, 1, options: [1,2,3])
 
-    assert_fails_validation( 'integer', nil, false, 4, 'value is not one of the options', options:[ 1,2,3 ])
-    assert_fails_validation( 'integer', nil, true, 4, 'value is not one of the options', options: [ 1,2,3 ])
-    assert_fails_validation( 'integer', nil, true, nil, 'value is not one of the options', options: [1,2,3])
+    assert_fails_validation( 'integer', nil, false, 4, 'value is not one of the options (1,2,3)', options:[ 1,2,3 ])
+    assert_fails_validation( 'integer', nil, true, 4, 'value is not one of the options (1,2,3)', options: [ 1,2,3 ])
+    assert_fails_validation( 'integer', nil, true, nil, 'value is not one of the options (1,2,3)', options: [1,2,3])
 
   end
 
