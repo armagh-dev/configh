@@ -102,8 +102,8 @@ module Configh
         Configh::Configuration.find( self, store, name, raw: raw )
       end
       
-      def create_configuration( store, name, values, maintain_history: false )
-        Configh::Configuration.create( self, store, name, values, maintain_history: maintain_history )
+      def create_configuration( store, name, values, maintain_history: false, test_callback_group: nil )
+        Configh::Configuration.create( self, store, name, values, maintain_history: maintain_history, test_callback_group: test_callback_group )
       end
 
       def force_update_configuration( store, name, new_values, maintain_history: false )

@@ -58,13 +58,13 @@ module Configh
           new_config.refresh
           result = new_config
         end
-      rescue ConfigNotFoundError => e
+      rescue ConfigNotFoundError
         return nil
       end
       result
     end
 
-     def self.create(for_class, store, name, values, maintain_history: false, updating:false)
+    def self.create( for_class, store, name, values, maintain_history: false, updating: false, test_callback_group: nil )
 
       config_class = ConfigStore.configuration_class( store )
       raise(ConfigInitError, "Name already in use") if config_class.name_exists?(for_class, store, name) && !updating
@@ -72,7 +72,7 @@ module Configh
 
       new_config = config_class.new(for_class, store, name, maintain_history: maintain_history)
       begin
-        new_config.reset_values_to(values)
+        new_config.reset_values_to(values, test_callback_group: test_callback_group)
         new_config.save
       rescue ConfigValidationError => e
         raise ConfigInitError, "Unable to create configuration for '#{for_class.name}' named '#{name}' because: #{ e.message }"
@@ -153,13 +153,14 @@ module Configh
       end
     end
     
-    def reset_values_to( candidate_values_hash, bypass_validation = false )
+    def reset_values_to( candidate_values_hash, bypass_validation = false, test_callback_group: nil )
       
       validated_values_hash = candidate_values_hash
       
       unless bypass_validation
-        _flagged_parameters, validated_values_hash, errors, _warnings = validate( candidate_values_hash )
-        raise ConfigValidationError, "\n    " + errors.join("\n    ") if errors.any?
+        _flagged_parameters, validated_values_hash, errors, _warnings =
+          validate( candidate_values_hash, test_callback_group: test_callback_group )
+        raise ConfigValidationError, "\n    " + errors.join("\n    ") if errors.any? && test_callback_group.nil?
       end
       
       @__values.each do | grp, _sub |
@@ -169,6 +170,7 @@ module Configh
       @__values = IceNine.deep_freeze validated_values_hash
 
       @__type.defined_parameters.each do |p|
+        next unless test_callback_group.nil? || p.group == test_callback_group
         singleton_class.class_eval { attr_reader p.group.to_sym }
         subobj = instance_variable_get("@#{p.group}" ) || instance_variable_set( "@#{p.group}", Object.new )  
         subobj.singleton_class.class_eval { attr_reader p.name.to_sym }
@@ -177,6 +179,7 @@ module Configh
       end
 
       @__type.defined_constants.each do |c|
+        next unless test_callback_group.nil? || c.group == test_callback_group
         singleton_class.class_eval { attr_reader c.group.to_sym }
         subobj = instance_variable_get("@#{c.group}" ) || instance_variable_set( "@#{c.group}", Object.new )
         subobj.singleton_class.class_eval { attr_reader c.name.to_sym }
@@ -185,18 +188,20 @@ module Configh
       end
     end
     
-    def validate( values_hash )
+    def validate( values_hash, test_callback_group: nil )
     
       working_values_hash = values_hash.deep_copy  # deep copy required
       flagged_configurables = [] 
       
       @__type.defined_parameters.each do |p|
+        next unless test_callback_group.nil? || p.group == test_callback_group
         working_values_hash[ p.group ] ||= {}
         flagged_configurables << p.validate( working_values_hash[ p.group ][ p.name ])
         working_values_hash[ p.group ].delete p.name
       end
 
       working_values_hash.each do |group,params|
+        next unless test_callback_group.nil? || group == test_callback_group
         if params.is_a?(Hash)
           params.each do |name,value|
              p = Parameter.new( group: group, name: name, type: 'string', description: 'non-existent')
@@ -212,7 +217,7 @@ module Configh
 
       validated_values_hash = Parameter.to_values_hash( flagged_configurables) unless errors.any?
     
-      if validated_values_hash and @__type.defined_group_validation_callbacks.any?
+      if test_callback_group.nil? and validated_values_hash and @__type.defined_group_validation_callbacks.any?
         candidate_config = self.class.new( @__type, [], 'temp' )
         candidate_config.reset_values_to( validated_values_hash, :secret_validation_bypass )
         @__type.defined_group_validation_callbacks.each do |vc|
@@ -322,7 +327,7 @@ module Configh
     def self.validate( for_class, candidate_values )
       
       temp_config = new( for_class, nil, 'temp' )
-      flagged_configurables, values, errors, warnings = temp_config.validate( candidate_values )
+      flagged_configurables, _values, _errors, _warnings = temp_config.validate( candidate_values )
       flagged_configurables
           .collect{ |cfgbl| cfgbl.to_hash }
     end
