@@ -20,10 +20,10 @@
 require_relative 'lib/configh/version'
 
 def self.get_build_version(version)
-  if ENV['PRODUCTION_RELEASE']
+  if ENV['ARMAGH_PRODUCTION_RELEASE']
     version
   else
-    revision = ENV['INTEG_BUILD_REVISION']
+    revision = `hg identify --num 2>/dev/null`.strip.gsub('+', '-dev')
     if revision.empty?
       "#{version}-dev"
     else
@@ -63,5 +63,4 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'simplecov', '~> 0.11'
   spec.add_development_dependency 'simplecov-rcov', '~> 0.2'
   spec.add_development_dependency 'yard', '~> 0.9'
-  
 end
