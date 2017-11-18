@@ -25,28 +25,30 @@ module Configh
     
     class TypeError < ::TypeError; end
 
-    SUPPORTED_TYPES = %w{ integer non_negative_integer positive_integer string populated_string date timestamp boolean encoded_string symbol hash string_array symbol_array object }
+    SUPPORTED_TYPES = %w{ integer non_negative_integer positive_integer string date timestamp boolean encoded_string symbol hash string_array symbol_array object }
     
     def self.supported?( datatype_name )
       SUPPORTED_TYPES.include?( datatype_name ) || self.respond_to?( "ensure_is_#{datatype_name}".to_sym )
     end
     
     def self.ensure_value_is_datatype( value, datatype_name, nullable = nil )
-    
-      if nullable
-        return nil if (value.nil? or ( value.is_a?(String) and value[/^\s*$/] and datatype_name != "populated_string"))
-      else
-        raise TypeError, 'value cannot be nil' if value.nil?
+
+      if value.nil?
+        if nullable
+          return nil
+        else
+          raise TypeError, 'value cannot be nil'
+        end
       end
       raise TypeError, "No such datatype #{ datatype_name }" unless supported?( datatype_name )
       
       dispatch = "ensure_is_#{datatype_name}"
     
-      send dispatch, value
+      send dispatch, value, nullable: nullable
 
     end
   
-    def self.ensure_is_integer( value )
+    def self.ensure_is_integer( value, nullable: false )
       d = nil
       begin
         d = Integer( value )
@@ -56,21 +58,27 @@ module Configh
       d
     end
   
-    def self.ensure_is_non_negative_integer( value )
+    def self.ensure_is_non_negative_integer( value, nullable: false )
       d = ensure_is_integer( value )
       raise TypeError, "value '#{d}' is negative" if d < 0
       d
     end
   
-    def self.ensure_is_positive_integer( value )
+    def self.ensure_is_positive_integer( value, nullable: false )
       d = ensure_is_integer( value )
       raise TypeError, "value '#{d}' is non-positive" if d <= 0
       d
     end
   
-    def self.ensure_is_string( value )
+    def self.ensure_is_string( value, nullable: false )
+
+      s = String( value )
+
+      unless nullable
+        raise TypeError, 'string is empty or nil' if s.nil? || s[/^\s*$/]
+      end
+
       begin
-        s = String( value )
         if s.frozen?
           unless s.encoding.to_s == 'UTF-8'
             raise TypeError, "value '#{value}' is frozen in encoding other than UTF-8"
@@ -80,19 +88,13 @@ module Configh
             s = s.force_encoding 'utf-8'
           end
         end
-      rescue
-        raise TypeError, "value '#{value}' cannot be cast as a string"
+      rescue => e
+        raise TypeError, "value '#{value}' cannot be cast as a string #{e}"
       end
       s
     end
-    
-    def self.ensure_is_populated_string( value )
-      s = ensure_is_string( value )
-      raise TypeError, 'string is empty or nil' unless s[/[^\s]/]
-      s
-    end
-    
-    def self.ensure_is_date( value )
+
+    def self.ensure_is_date( value, nullable: false )
       
       return value if value.class <= Date
       return value.to_date if value.respond_to?( :to_date )
@@ -108,7 +110,7 @@ module Configh
       dt
     end
   
-    def self.ensure_is_timestamp( value )
+    def self.ensure_is_timestamp( value, nullable: false )
       ts = value
       unless ts.class <= Time
         begin
@@ -120,7 +122,7 @@ module Configh
       ts
     end
   
-    def self.ensure_is_boolean( value )
+    def self.ensure_is_boolean( value, nullable: false )
       return value if Boolean.bool? value
 
       bool = nil
@@ -137,13 +139,13 @@ module Configh
       bool
     end
     
-    def self.ensure_is_encoded_string( value )
+    def self.ensure_is_encoded_string( value , nullable: false)
       value = EncodedString.from_encoded( value ) if value.is_a?( String )
       raise TypeError, "value '#{value}' is not an encoded string" unless value.is_a?( EncodedString )
       value
     end
     
-    def self.ensure_is_symbol( value )
+    def self.ensure_is_symbol( value, nullable: false )
       sym = nil
       begin
         sym = value.to_sym
@@ -153,12 +155,12 @@ module Configh
       sym
     end
     
-    def self.ensure_is_hash( value )
+    def self.ensure_is_hash( value, nullable: false )
       begin
         hash = value.is_a?(String) ? JSON.parse(value) : value
         if hash.is_a? Hash
           nh = {}
-          hash.each{|k,v| nh[ensure_is_string(k)] = ensure_is_string(v)}
+          hash.each{|k,v| nh[ensure_is_string(k, nullable:nullable)] = ensure_is_string(v, nullable:nullable)}
           return nh
         end
       rescue JSON::ParserError
@@ -170,7 +172,7 @@ module Configh
       raise TypeError, "value '#{value}' is not a hash of strings"
     end
 
-    def self.ensure_is_string_array(value)
+    def self.ensure_is_string_array(value, nullable: false)
       begin
         array = value.is_a?(String) ? JSON.parse(value) : value
         return array.collect{|i| ensure_is_string(i)} if array.is_a? Array
@@ -183,7 +185,7 @@ module Configh
       raise TypeError, "value '#{value}' is not an array of strings"
     end
 
-    def self.ensure_is_symbol_array(value)
+    def self.ensure_is_symbol_array(value, nullable: false)
       begin
         array = value.is_a?(String) ? JSON.parse(value) : value
         return array.collect{|i| ensure_is_symbol(i)} if array.is_a? Array
@@ -196,7 +198,7 @@ module Configh
       raise TypeError, "value '#{value}' is not an array of symbols"
     end
 
-    def self.ensure_is_object(value)
+    def self.ensure_is_object(value, nullable: false)
       return value
     end
   end

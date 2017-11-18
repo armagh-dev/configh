@@ -100,11 +100,6 @@ class TestParameter < Test::Unit::TestCase
     @type = 'string'
     @default = 'hi'; assert_nothing_raised{ define_from_ivars }
     
-    @type = 'populated_string'
-    @default = 'hi'; assert_nothing_raised{ define_from_ivars }
-    @default = ' ';  assert_parameter_definition_raises_parameter_definition_error_with_message( "Default value   is not a/an populated_string.")
-    @default = nil;  assert_nothing_raised{ define_from_ivars }
-    
     @type = 'timestamp'
     @default = Time.now; assert_nothing_raised{ define_from_ivars }
     @default = Date.today; assert_parameter_definition_raises_parameter_definition_error_with_message( "Default value #{Date.today} is not a/an timestamp.")
@@ -195,10 +190,7 @@ class TestParameter < Test::Unit::TestCase
     assert_successful_validation( 'positive_integer', nil, true, '42', 42 )
     assert_fails_validation( 'positive_integer', nil, true, 'x', "type validation failed: value 'x' cannot be cast as an integer" )
     assert_fails_validation( 'positive_integer', nil, false, 0, "type validation failed: value '0' is non-positive")
-    
-    assert_successful_validation( 'populated_string', nil, true, 'hi', 'hi' )
-    assert_fails_validation( 'populated_string', nil, true, '', 'type validation failed: string is empty or nil')
-    
+
     assert_successful_validation( 'date', nil, true, d.strftime( "%Y-%m-%d"), d )
     assert_successful_validation( 'date', nil, false, nil, nil )
     assert_successful_validation( 'date', nil, true, d, d )
@@ -223,7 +215,7 @@ class TestParameter < Test::Unit::TestCase
   
   def test_all_errors
     
-    p1 = Configh::Parameter.new( name: 'p1', description: 'p1', required: true, type: 'populated_string' )
+    p1 = Configh::Parameter.new( name: 'p1', description: 'p1', required: true, type: 'string' )
     p1v = p1.validate( '' )
     p2 = Configh::Parameter.new( name: 'p2', description: 'p2', required: true, type: 'integer', group: 'subset')
     p2v = p2.validate( 'x' )
@@ -249,13 +241,13 @@ class TestParameter < Test::Unit::TestCase
   end
 
   def test_to_hash_with_options
-    p = Configh::Parameter.new( name: 'method', description: 'http method', required: true, type: 'populated_string', options: %w( get post ))
+    p = Configh::Parameter.new( name: 'method', description: 'http method', required: true, type: 'string', options: %w( get post ))
     result = p.to_hash
     assert_equal result[ 'options' ], %w( get post )
   end
 
   def test_to_hash_without_options
-    p = Configh::Parameter.new( name: 'method', description: 'http method', required: true, type: 'populated_string' )
+    p = Configh::Parameter.new( name: 'method', description: 'http method', required: true, type: 'string' )
     result = p.to_hash
     assert_true result.has_key?( 'options' )
     assert_nil result[ 'options' ]

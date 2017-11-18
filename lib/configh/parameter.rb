@@ -26,9 +26,9 @@ module Configh
     attr_accessor :name, :description, :type, :required, :default, :options, :prompt, :group, :writable, :warning, :error, :value
 
     def initialize(name:, description:, type:, required: false, default: nil, options: nil, prompt: nil, group: nil)
-      [['name', name, 'populated_string'],
-       ['description', description, 'populated_string'],
-       ['type', type, 'populated_string'],
+      [['name', name, 'string', false],
+       ['description', description, 'string', false],
+       ['type', type, 'string', false],
        ['required', required, 'boolean'],
        ['prompt', prompt, 'string', true],
        ['group', group, 'string', true]
@@ -66,7 +66,7 @@ module Configh
             DataTypes.ensure_value_is_datatype( option, type, false )
           rescue
             raise ParameterDefinitionError, "Option #{option} is not a/an #{type}."
-          end
+           end
         }
         raise ParameterDefinitionError, "Default value #{ @default } is not included in the options." if @default && !@options.include?(@default)
       end

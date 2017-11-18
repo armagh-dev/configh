@@ -26,7 +26,7 @@ module Configh
     attr_accessor :name, :value, :group
 
     def initialize(name:, value:, group: nil)
-      [['name', name, 'populated_string'],
+      [['name', name, 'string', false],
        ['value', value, 'object', true],
        ['group', group, 'string', true]
       ].each do |pp_name, pp_value, pp_type, pp_nullable|

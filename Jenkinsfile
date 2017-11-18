@@ -28,11 +28,10 @@ currentBuild.result = "Success"
 
 
   node('armagh-builder') {
-
      stage('Prep') {
 
        deleteDir()
-     
+
        checkout scm
 
        sh """#!/bin/bash -l
@@ -44,18 +43,18 @@ currentBuild.result = "Success"
          mongod --version
        """
      }
-  
+
      stage('Unit Test') {
-     
+
        sh """#!/bin/bash -l
          echo -e "*********************************************\n** Unit testing:" `hg identify -i` "\n*********************************************"
          set -e
          bundle exec rake test
        """
      }
-  
+
      stage('Integration Test') {
-     
+
        sh """#!/bin/bash -l
          echo -e "*********************************************\n** Integration testing:" `hg identify -i` "\n*********************************************"
          set -e
@@ -64,7 +63,7 @@ currentBuild.result = "Success"
      }
 
      stage('Rcov') {
-     
+
        publishHTML (target: [
          allowMissing: false,
          alwaysLinkToLastBuild: false,
@@ -82,7 +81,7 @@ currentBuild.result = "Success"
          set -e
          bundle exec rake yard
        """
-     
+
        publishHTML (target: [
          allowMissing: false,
          alwaysLinkToLastBuild: false,
@@ -94,17 +93,17 @@ currentBuild.result = "Success"
      }
 
      stage('Prerelease') {
-       if ((env.BRANCH_NAME == "default") && (currentBuild.result == 'SUCCESS') && isNewBuild('configh')) {
-
-         sh """#!/bin/bash -l
-           echo -e "*********************************************\n** Prereleasing:" `hg identify -i` "\n*********************************************"
-           set -e
-           bundle exec rake prerelease
-         """
-
-         build job: '/armagh-base-actions/default', wait: false
-       }
-     }
+       if ((env.BRANCH_NAME == "default") && (currentBuild.result == 'SUCCESS')) {
+         if (isNewBuild('configh')) {
+           sh """#!/bin/bash -l
+             echo -e "*********************************************\n** Prereleasing:" `hg identify -i` "\n*********************************************"
+             set -e
+             bundle exec rake prerelease
+           """
+         }
+        build job: '/armagh-base-actions/default', wait: false
+      }
+    }
   }
 }
 
