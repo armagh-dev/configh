@@ -46,7 +46,7 @@ module Configh
       find( for_class, store, name ) || create( for_class, store, name, values_for_create, maintain_history: maintain_history )
     end
     
-    def self.find( for_class, store, name, raw: false ) 
+    def self.find( for_class, store, name, raw: false, bypass_validation: false )
 
       config_class = ConfigStore.configuration_class( store )
       new_config = config_class.new( for_class, store, name )
@@ -55,7 +55,7 @@ module Configh
         if raw
           result = new_config.get
         else
-          new_config.refresh
+          new_config.refresh( bypass_validation: bypass_validation )
           result = new_config
         end
       rescue ConfigNotFoundError
@@ -64,7 +64,7 @@ module Configh
       result
     end
 
-    def self.create( for_class, store, name, values, maintain_history: false, updating: false, test_callback_group: nil )
+    def self.create( for_class, store, name, values, maintain_history: false, updating: false, bypass_validation: false, test_callback_group: nil )
 
       config_class = ConfigStore.configuration_class( store )
       raise(ConfigInitError, "Name already in use") if config_class.name_exists?(for_class, store, name) && !updating
@@ -72,7 +72,7 @@ module Configh
 
       new_config = config_class.new(for_class, store, name, maintain_history: maintain_history)
       begin
-        new_config.reset_values_to(values, test_callback_group: test_callback_group)
+        new_config.reset_values_to(values, bypass_validation, test_callback_group: test_callback_group)
         new_config.save
       rescue ConfigValidationError => e
         raise ConfigInitError, "Unable to create configuration for '#{for_class.name}' named '#{name}' because: #{ e.message }"
@@ -115,19 +115,19 @@ module Configh
       @__timestamp = nil
     end        
         
-    def refresh
+    def refresh( bypass_validation: false )
       serialized_config = get
       raise ConfigNotFoundError, "Type #{ @__type } #{ @__name } not found during refresh" unless serialized_config
-      stored_config = Configuration.unserialize( serialized_config )
+      stored_config = Configuration.unserialize( serialized_config, bypass_validation: bypass_validation )
       return false if @__timestamp and stored_config[ 'timestamp' ] == @__timestamp
       raise ConfigRefreshError, "#{@__type} #{@__name} configuration in database is older than that previously loaded." if @__timestamp and stored_config['timestamp'] < @__timestamp
-      reset_values_to( stored_config[ 'values' ] )
+      reset_values_to( stored_config[ 'values' ], bypass_validation )
       @__timestamp = stored_config[ 'timestamp' ]
       @__maintain_history = stored_config[ 'maintain_history' ]
       return true 
     end
 
-    def update_merge( values_to_merge )
+    def update_merge( values_to_merge, bypass_validation: false )
 
       raise ConfigInitError, "Values to merge must be a Hash" unless values_to_merge.is_a?(Hash)
 
@@ -136,18 +136,18 @@ module Configh
         new_values[grp] ||= {}
         new_values[grp].merge! params
       end
-      update_replace( new_values )
+      update_replace( new_values, bypass_validation: bypass_validation )
     end
 
-    def update_replace( new_values )
+    def update_replace( new_values, bypass_validation: false )
 
       raise ConfigInitError, "New values must be a Hash" unless new_values.is_a?(Hash)
 
-      reset_values_to( new_values )
+      reset_values_to( new_values, bypass_validation )
       @__timestamp = nil
 
       if @__maintain_history
-        self.class.create( @__type, @__store, @__name, new_values, maintain_history: @__maintain_history, updating:true )
+        self.class.create( @__type, @__store, @__name, new_values, maintain_history: @__maintain_history, updating:true, bypass_validation: bypass_validation )
       else
         save
       end
@@ -215,7 +215,7 @@ module Configh
       errors   = Parameter.all_errors( flagged_configurables )
       warnings = Parameter.all_warnings( flagged_configurables )
 
-      validated_values_hash = Parameter.to_values_hash( flagged_configurables) unless errors.any?
+      validated_values_hash = Parameter.to_values_hash( flagged_configurables ) unless errors.any? && test_callback_group.nil?
     
       if test_callback_group.nil? and validated_values_hash and @__type.defined_group_validation_callbacks.any?
         candidate_config = self.class.new( @__type, [], 'temp' )
@@ -270,27 +270,36 @@ module Configh
       
     end
 
-    def Configuration.unserialized_values( param_defs, serialized_values )
+    def Configuration.unserialized_values( param_defs, serialized_values, bypass_validation: false )
       un_values = {}
       serialized_values.each do |grp, params|
         un_values[ grp ] ||= {}
         params.each do |k,v|
           target_datatype = get_target_datatype(param_defs, grp, k)
           if target_datatype
-            un_values[grp][k] = DataTypes.ensure_value_is_datatype( v, target_datatype )
+            begin
+              un_values[grp][k] = DataTypes.ensure_value_is_datatype( v, target_datatype )
+            rescue
+              un_values[grp][k] = v
+              raise unless bypass_validation
+            end
           else
-            raise ConfigInitError, "Invalid and/or Unsupported Configuration for Group: #{grp.inspect} Parameters: #{params.inspect} Key: #{k.inspect} Value: #{v.inspect}"
+            raise ConfigInitError, "Invalid and/or Unsupported Configuration for Group: #{grp.inspect} Parameters: #{params.inspect} Key: #{k.inspect} Value: #{v.inspect}" unless bypass_validation
           end
         end
       end
       un_values
     end
 
-    def Configuration.unserialize( serialized_config )
+    def Configuration.unserialize( serialized_config, bypass_validation: false )
       begin
         type = constant( serialized_config[ 'type' ])
       rescue
-        raise ConfigInitError, "Unrecognized type #{ serialized_config[ 'type' ]}"
+        if bypass_validation
+          type = serialized_config[ 'type' ]
+        else
+          raise ConfigInitError, "Unrecognized type #{ serialized_config[ 'type' ]}"
+        end
       end
 
       unserialized_config = {
@@ -298,7 +307,7 @@ module Configh
         'name'             => serialized_config[ 'name' ],
         'timestamp'        => Time.parse( serialized_config[ 'timestamp']),
         'maintain_history' => JSON.parse(serialized_config[ 'maintain_history' ]),
-        'values'           => unserialized_values( type.defined_parameters, serialized_config[ 'values'] )
+        'values'           => unserialized_values( type.defined_parameters, serialized_config[ 'values'], bypass_validation: bypass_validation )
       }
       
       unserialized_config

@@ -98,16 +98,16 @@ module Configh
         Configh::Configuration.find_or_create( self, store, name, values_for_create: values_for_create, maintain_history: maintain_history )
       end
       
-      def find_configuration( store, name, raw: false )
-        Configh::Configuration.find( self, store, name, raw: raw )
+      def find_configuration( store, name, raw: false, bypass_validation: false )
+        Configh::Configuration.find( self, store, name, raw: raw, bypass_validation: bypass_validation )
       end
       
-      def create_configuration( store, name, values, maintain_history: false, test_callback_group: nil )
-        Configh::Configuration.create( self, store, name, values, maintain_history: maintain_history, test_callback_group: test_callback_group )
+      def create_configuration( store, name, values, maintain_history: false, bypass_validation: false, test_callback_group: nil )
+        Configh::Configuration.create( self, store, name, values, maintain_history: maintain_history, bypass_validation: bypass_validation, test_callback_group: test_callback_group )
       end
 
-      def force_update_configuration( store, name, new_values, maintain_history: false )
-        Configh::Configuration.create( self, store, name, new_values, maintain_history: maintain_history, updating: true )
+      def force_update_configuration( store, name, new_values, maintain_history: false, bypass_validation: false )
+        Configh::Configuration.create( self, store, name, new_values, maintain_history: maintain_history, updating: true, bypass_validation: bypass_validation )
       end
       
       def find_all_configurations( store, include_descendants: false, raw: false )
